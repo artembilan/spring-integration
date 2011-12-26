@@ -71,6 +71,7 @@ allprojects {
         mavenRepo name: 'SpringSource Release Bundle Repository', urls: 'http://repository.springsource.com/maven/bundles/release'
         // needed for external dependencies required by bundlor:
         mavenRepo name: 'SpringSource External Bundle Repository', urls: 'http://repository.springsource.com/maven/bundles/external'
+		mavenRepo name: 'Local', urls: new File('d:/Java/.m2/repository').toURL().toString()
     }
 }
 
@@ -197,6 +198,7 @@ project('spring-integration-core') {
         compile "org.springframework:spring-context:$springVersion"
         compile("org.springframework:spring-tx:$springVersion") { optional = true }
         compile("org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion") { optional = true }
+        compile('net.sf.sojo:sojo:1.0.0') { optional = true }
         testCompile "org.aspectj:aspectjrt:$aspectjVersion"
         testCompile "org.aspectj:aspectjweaver:$aspectjVersion"
     }

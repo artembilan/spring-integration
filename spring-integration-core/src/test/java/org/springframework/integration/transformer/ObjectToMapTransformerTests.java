@@ -128,21 +128,27 @@ public class ObjectToMapTransformerTests {
 		
 		expression = parser.parseExpression("companyAddress.coordinates.latitude[0]");
 		valueFromTheMap = transformedMap.get("companyAddress.coordinates.latitude[0]");
-		valueFromExpression = expression.getValue(context, employee, Integer.class);
+		valueFromExpression = expression.getValue(context, employee, Long.class);
 		assertEquals(valueFromTheMap, valueFromExpression);
 		
+		expression = parser.parseExpression("person.age");
+		valueFromTheMap = transformedMap.get("person.age");
+		valueFromExpression = expression.getValue(context, employee, BigDecimal.class);
+		assertEquals(valueFromTheMap, valueFromExpression);
+
 		expression = parser.parseExpression("person.remarks[1].baz");
 		valueFromTheMap = transformedMap.get("person.remarks[1].baz");
 		valueFromExpression = expression.getValue(context, employee, String.class);
 		assertEquals(valueFromTheMap, valueFromExpression);
 		
 		expression = parser.parseExpression("listOfDates[0][1]");
-		valueFromTheMap = new Date((Long) transformedMap.get("listOfDates[0][1]"));
+		valueFromTheMap = transformedMap.get("listOfDates[0][1]");
 		valueFromExpression = expression.getValue(context, employee, Date.class);
 		assertEquals(valueFromTheMap, valueFromExpression);
 	}
 
-	@Test(expected=MessageTransformationException.class)
+	@SuppressWarnings("unchecked")
+	@Test
 	public void testObjectToSpelMapTransformerWithCycle(){
 		Employee employee = this.buildEmployee();
 		Child child = new Child();	
@@ -151,7 +157,10 @@ public class ObjectToMapTransformerTests {
 		child.setParent(parent);
 		ObjectToMapTransformer transformer = new ObjectToMapTransformer();
 		Message<Employee> message = MessageBuilder.withPayload(employee).build();
-		transformer.transform(message);
+		Message<?> transformedMessage = transformer.transform(message);
+		Map<String, Object> transformedMap = (Map<String, Object>) transformedMessage.getPayload();
+		assertNotNull(transformedMap);
+//		TODO add assert
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

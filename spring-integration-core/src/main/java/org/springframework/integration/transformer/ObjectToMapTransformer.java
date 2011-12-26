@@ -20,6 +20,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.sf.sojo.core.Converter;
+import net.sf.sojo.core.conversion.ComplexBean2MapConversion;
+import net.sf.sojo.core.conversion.Iterateable2IterateableConversion;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -60,8 +63,14 @@ public class ObjectToMapTransformer extends AbstractPayloadTransformer<Object, M
 
 	@SuppressWarnings("unchecked")
 	protected Map<String, Object> transformPayload(Object payload) throws Exception {
-		ObjectMapper mapper = new ObjectMapper();
+		/*ObjectMapper mapper = new ObjectMapper();
 		Map<String,Object> result = new ObjectMapper().readValue(mapper.writeValueAsString(payload), Map.class);
+		*/
+
+		Converter converter = new Converter();
+		converter.addConversion(new ComplexBean2MapConversion());
+		converter.addConversion(new Iterateable2IterateableConversion());
+		Map<String, Object> result = (Map<String, Object>) converter.convert(payload);
 		if (this.shouldFlattenKeys) {
 			result = this.flattenMap(result);
 		}

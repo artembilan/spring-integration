@@ -44,6 +44,10 @@ public class TransformerContextTests {
 		input.send(new GenericMessage<String>("foo"));
 		Message<?> reply = output.receive(0);
 		assertEquals("FOO", reply.getPayload());
+		// to check cache abstraction
+		input.send(new GenericMessage<String>("foo"));
+		reply = output.receive(0);
+		assertEquals("FOO", reply.getPayload());
 		assertEquals(1, adviceCalled);
 	}
 

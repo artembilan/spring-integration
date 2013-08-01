@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans:beans xmlns="http://www.springframework.org/schema/integration"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns:beans="http://www.springframework.org/schema/beans"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans
+			 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			 xmlns:beans="http://www.springframework.org/schema/beans"
+			 xmlns:cache="http://www.springframework.org/schema/cache"
+			 xsi:schemaLocation="http://www.springframework.org/schema/beans
 			http://www.springframework.org/schema/beans/spring-beans.xsd
 			http://www.springframework.org/schema/integration
-			http://www.springframework.org/schema/integration/spring-integration.xsd">
+			http://www.springframework.org/schema/integration/spring-integration.xsd
+			http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd">
 
 	<channel id="input"/>
 
@@ -15,10 +17,17 @@
 
 	<transformer input-channel="input" ref="testBean" method="upperCase" output-channel="output">
 		<request-handler-advice-chain>
+			<cache:advice>
+				<cache:caching cache="foo">
+					<cache:cacheable method="handle*Message" key="#a0.payload"/>
+				</cache:caching>
+			</cache:advice>
 			<beans:bean class="org.springframework.integration.transformer.TransformerContextTests$FooAdvice" />
 		</request-handler-advice-chain>
 	</transformer>
 
 	<beans:bean id="testBean" class="org.springframework.integration.transformer.TestBean"/>
+
+	<beans:bean id="cacheManager" class="org.springframework.cache.concurrent.ConcurrentMapCacheManager"/>
 
 </beans:beans>

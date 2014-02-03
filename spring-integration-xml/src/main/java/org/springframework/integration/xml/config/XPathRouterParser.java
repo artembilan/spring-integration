@@ -30,7 +30,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * Parser for the &lt;xpath-router/&gt; element.
- * 
+ *
  * @author Jonas Partner
  * @author Mark Fisher
  * @author Oleg Zhurakousky
@@ -41,7 +41,7 @@ public class XPathRouterParser extends AbstractRouterParser {
 
 
 	@Override
-	protected BeanDefinition doParseRouter(Element element, ParserContext parserContext) {
+	protected BeanDefinitionBuilder doParseRouter(Element element, ParserContext parserContext) {
 		BeanDefinitionBuilder xpathRouterBuilder = BeanDefinitionBuilder.genericBeanDefinition(XPathRouter.class);
 		NodeList xPathExpressionNodes = element.getElementsByTagNameNS(element.getNamespaceURI(), "xpath-expression");
 		Assert.isTrue(xPathExpressionNodes.getLength() <= 1, "At most one xpath-expression child may be specified.");
@@ -55,11 +55,11 @@ public class XPathRouterParser extends AbstractRouterParser {
 			BeanDefinition beanDefinition = this.xpathParser.parse((Element) xPathExpressionNodes.item(0), parserContext);
 			xpathRouterBuilder.addConstructorArgValue(beanDefinition);
 		}
-		else { 
+		else {
 			xpathRouterBuilder.addConstructorArgReference(xPathExpressionRef);
 		}
 		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(xpathRouterBuilder, element, "converter");
-		return xpathRouterBuilder.getBeanDefinition();
+		return xpathRouterBuilder;
 	}
 
 }

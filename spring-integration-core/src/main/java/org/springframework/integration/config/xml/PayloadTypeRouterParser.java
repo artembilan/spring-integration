@@ -16,15 +16,15 @@
 
 package org.springframework.integration.config.xml;
 
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.w3c.dom.Element;
+
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.integration.router.PayloadTypeRouter;
-import org.w3c.dom.Element;
 
 /**
  * Parser for the &lt;payload-type-router/&gt; element.
- * 
+ *
  * @author Oleg Zhurakousky
  * @author Mark Fisher
  * @since 1.0.3
@@ -37,8 +37,8 @@ public class PayloadTypeRouterParser extends AbstractRouterParser {
 	}
 
 	@Override
-	protected BeanDefinition doParseRouter(Element element, ParserContext parserContext) {
-		return new RootBeanDefinition(PayloadTypeRouter.class);
+	protected BeanDefinitionBuilder doParseRouter(Element element, ParserContext parserContext) {
+		return BeanDefinitionBuilder.genericBeanDefinition(PayloadTypeRouter.class);
 	}
 
 }

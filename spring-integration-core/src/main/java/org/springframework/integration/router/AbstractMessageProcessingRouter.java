@@ -20,6 +20,10 @@ import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.expression.ExtendedSpelExpressionParser;
+import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.integration.handler.AbstractMessageProcessor;
 import org.springframework.integration.handler.MessageProcessor;
@@ -32,7 +36,7 @@ import org.springframework.util.Assert;
  * @author Mark Fisher
  * @since 2.0
  */
-class AbstractMessageProcessingRouter extends AbstractMappingMessageRouter {
+class AbstractMessageProcessingRouter extends AbstractMappingMessageRouter<Expression> {
 
 	private final MessageProcessor<?> messageProcessor;
 
@@ -41,7 +45,6 @@ class AbstractMessageProcessingRouter extends AbstractMappingMessageRouter {
 		Assert.notNull(messageProcessor, "messageProcessor must not be null");
 		this.messageProcessor = messageProcessor;
 	}
-
 
 	@Override
 	public final void onInit() {
@@ -52,6 +55,29 @@ class AbstractMessageProcessingRouter extends AbstractMappingMessageRouter {
 		if (this.messageProcessor instanceof BeanFactoryAware) {
 			((BeanFactoryAware) this.messageProcessor).setBeanFactory(this.getBeanFactory());
 		}
+	}
+
+	/**
+	 * Add a channel mapping from the provided key to channel name.
+	 *
+	 * @param key The key.
+	 * @param channelName The channel name.
+	 */
+	@Override
+	@ManagedOperation
+	public void setChannelMapping(String key, String channelName) {
+		this.channelMappings.put(PARSER.parseExpression(key), channelName);
+	}
+
+	/**
+	 * Remove a channel mapping for the given key if present.
+	 *
+	 * @param key The key.
+	 */
+	@Override
+	@ManagedOperation
+	public void removeChannelMapping(String key) {
+		this.channelMappings.remove(PARSER.parseExpression(key));
 	}
 
 	@Override

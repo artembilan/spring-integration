@@ -19,34 +19,77 @@ package org.springframework.integration.router;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.beans.factory.BeanClassLoaderAware;
+import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.util.ClassUtils;
 
 /**
  * A Message Router that resolves the target {@link MessageChannel} for
  * messages whose payload is an Exception. The channel resolution is based upon
  * the most specific cause of the error for which a channel-mapping exists.
- * 
+ *
  * @author Mark Fisher
  * @author Oleg Zhurakousky
- */  
-public class ErrorMessageExceptionTypeRouter extends AbstractMappingMessageRouter {
+ */
+public class ErrorMessageExceptionTypeRouter extends AbstractMappingMessageRouter<Class<?>>
+		implements BeanClassLoaderAware {
+
+	private volatile ClassLoader classLoader;
+
+	@Override
+	public void setBeanClassLoader(ClassLoader classLoader) {
+		this.classLoader = classLoader;
+	}
+
+	/**
+	 * Add a channel mapping from the provided key to channel name.
+	 *
+	 * @param key The key.
+	 * @param channelName The channel name.
+	 */
+	@Override
+	@ManagedOperation
+	public void setChannelMapping(String key, String channelName) {
+		try {
+			this.channelMappings.put(ClassUtils.forName(key, this.classLoader), channelName);
+		}
+		catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+
+	/**
+	 * Remove a channel mapping for the given key if present.
+	 *
+	 * @param key The key.
+	 */
+	@Override
+	@ManagedOperation
+	public void removeChannelMapping(String key) {
+		try {
+			this.channelMappings.remove(ClassUtils.forName(key, this.classLoader));
+		}
+		catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
 
 	@Override
 	protected List<Object> getChannelKeys(Message<?> message) {
-		String mostSpecificCause = null;
+		Class<?> mostSpecificCause = null;
 		Object payload = message.getPayload();
 		if (payload instanceof Throwable) {
 			Throwable cause = (Throwable) payload;
 			while (cause != null) {
-				String causeName = cause.getClass().getName();
-				if (this.getChannelMappings().keySet().contains(causeName)) {
-					mostSpecificCause = causeName;
+				Class<?> causeClass = cause.getClass();
+				if (this.getChannelMappings().keySet().contains(causeClass)) {
+					mostSpecificCause = causeClass;
 				}
 				cause = cause.getCause();
 			}
 		}
 		return Collections.singletonList((Object) mostSpecificCause);
 	}
-
 }

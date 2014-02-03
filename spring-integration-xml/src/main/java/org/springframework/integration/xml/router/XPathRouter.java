@@ -24,9 +24,11 @@ import java.util.Map;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Node;
 
+import org.springframework.expression.Expression;
 import org.springframework.integration.router.AbstractMappingMessageRouter;
 import org.springframework.integration.xml.DefaultXmlPayloadConverter;
 import org.springframework.integration.xml.XmlPayloadConverter;
+import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.xml.xpath.NodeMapper;
@@ -39,7 +41,7 @@ import org.springframework.xml.xpath.XPathExpressionFactory;
  * @author Jonas Partner
  * @author Oleg Zhurakousky
  */
-public class XPathRouter extends AbstractMappingMessageRouter {
+public class XPathRouter extends AbstractMappingMessageRouter<Expression> {
 
 	private volatile NodeMapper<Object> nodeMapper = new TextContentNodeMapper();
 
@@ -110,6 +112,30 @@ public class XPathRouter extends AbstractMappingMessageRouter {
 		Assert.notNull(converter, "converter must not be null");
 		this.converter = converter;
 	}
+
+	/**
+	 * Add a channel mapping from the provided key to channel name.
+	 *
+	 * @param key The key.
+	 * @param channelName The channel name.
+	 */
+	@Override
+	@ManagedOperation
+	public void setChannelMapping(String key, String channelName) {
+		this.channelMappings.put(PARSER.parseExpression(key), channelName);
+	}
+
+	/**
+	 * Remove a channel mapping for the given key if present.
+	 *
+	 * @param key The key.
+	 */
+	@Override
+	@ManagedOperation
+	public void removeChannelMapping(String key) {
+		this.channelMappings.remove(PARSER.parseExpression(key));
+	}
+
 
 	@Override
 	public String getComponentType() {

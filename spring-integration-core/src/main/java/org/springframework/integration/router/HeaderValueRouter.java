@@ -19,6 +19,8 @@ package org.springframework.integration.router;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.expression.Expression;
+import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -30,7 +32,7 @@ import org.springframework.util.StringUtils;
  * @author Mark Fisher
  * @since 1.0.3
  */
-public class HeaderValueRouter extends AbstractMappingMessageRouter {
+public class HeaderValueRouter extends AbstractMappingMessageRouter<Expression> {
 
 	private final String headerName;
 
@@ -42,6 +44,29 @@ public class HeaderValueRouter extends AbstractMappingMessageRouter {
 	public HeaderValueRouter(String headerName) {
 		Assert.notNull(headerName, "'headerName' must not be null");
 		this.headerName = headerName;
+	}
+
+	/**
+	 * Add a channel mapping from the provided key to channel name.
+	 *
+	 * @param key The key.
+	 * @param channelName The channel name.
+	 */
+	@Override
+	@ManagedOperation
+	public void setChannelMapping(String key, String channelName) {
+		this.channelMappings.put(PARSER.parseExpression(key), channelName);
+	}
+
+	/**
+	 * Remove a channel mapping for the given key if present.
+	 *
+	 * @param key The key.
+	 */
+	@Override
+	@ManagedOperation
+	public void removeChannelMapping(String key) {
+		this.channelMappings.remove(PARSER.parseExpression(key));
 	}
 
 	@Override

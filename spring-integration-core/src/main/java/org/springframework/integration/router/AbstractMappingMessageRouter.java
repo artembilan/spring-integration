@@ -25,8 +25,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.expression.ExtendedSpelExpressionParser;
 import org.springframework.integration.support.channel.BeanFactoryChannelResolver;
-import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -43,11 +44,14 @@ import org.springframework.util.StringUtils;
  * @author Oleg Zhurakousky
  * @author Gunnar Hillert
  * @author Gary Russell
+ * @author Artem Bilan
  * @since 2.1
  */
-public abstract class AbstractMappingMessageRouter extends AbstractMessageRouter implements MappingMessageRouterManagement {
+public abstract class AbstractMappingMessageRouter<M> extends AbstractMessageRouter implements MappingMessageRouterManagement {
 
-	private volatile Map<String, String> channelMappings = new ConcurrentHashMap<String, String>();
+	protected static final SpelExpressionParser PARSER = new ExtendedSpelExpressionParser();
+
+	protected volatile Map<M, String> channelMappings = new ConcurrentHashMap<M, String>();
 
 	private volatile DestinationResolver<MessageChannel> channelResolver;
 
@@ -64,9 +68,9 @@ public abstract class AbstractMappingMessageRouter extends AbstractMessageRouter
 	 *
 	 * @param channelMappings The channel mappings.
 	 */
-	public void setChannelMappings(Map<String, String> channelMappings) {
-		Map<String, String> oldChannelMappings = this.channelMappings;
-		Map<String, String> newChannelMappings = new ConcurrentHashMap<String, String>();
+	public void setChannelMappings(Map<M, String> channelMappings) {
+		Map<M, String> oldChannelMappings = this.channelMappings;
+		Map<M, String> newChannelMappings = new ConcurrentHashMap<M, String>();
 		newChannelMappings.putAll(channelMappings);
 		this.channelMappings = newChannelMappings;
 		if (logger.isDebugEnabled()) {
@@ -122,31 +126,8 @@ public abstract class AbstractMappingMessageRouter extends AbstractMessageRouter
 	 *
 	 * @return The channel mappings.
 	 */
-	protected Map<String, String> getChannelMappings() {
+	protected Map<M, String> getChannelMappings() {
 		return Collections.unmodifiableMap(this.channelMappings);
-	}
-
-	/**
-	 * Add a channel mapping from the provided key to channel name.
-	 *
-	 * @param key The key.
-	 * @param channelName The channel name.
-	 */
-	@Override
-	@ManagedOperation
-	public void setChannelMapping(String key, String channelName) {
-		this.channelMappings.put(key, channelName);
-	}
-
-	/**
-	 * Remove a channel mapping for the given key if present.
-	 *
-	 * @param key The key.
-	 */
-	@Override
-	@ManagedOperation
-	public void removeChannelMapping(String key) {
-		this.channelMappings.remove(key);
 	}
 
 	@Override

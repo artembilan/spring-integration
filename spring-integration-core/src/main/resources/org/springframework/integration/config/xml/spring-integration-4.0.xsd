@@ -3079,7 +3079,18 @@
             <xsd:annotation>
                 <xsd:documentation>
                 A value of the evaluation token that will be mapped to a channel reference
-                (e.g., mapping value='foo' channel='myChannel')
+                (e.g., mapping value='foo' channel='myChannel').
+				This attribute is mutually exclusive with 'expression' attribute.
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="expression" type="xsd:string">
+            <xsd:annotation>
+                <xsd:documentation>
+                A SpEL expression the which boolean evaluation result will be mapped to a channel reference.
+				The 'roo object' of evaluation context is a result of main router condition
+				('expression' or method invocation result), if any.
+				This attribute is mutually exclusive with 'value' attribute.
                 </xsd:documentation>
             </xsd:annotation>
         </xsd:attribute>

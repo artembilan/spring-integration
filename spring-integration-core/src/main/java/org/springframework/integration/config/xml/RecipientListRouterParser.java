@@ -43,13 +43,12 @@ import org.springframework.util.xml.DomUtils;
 public class RecipientListRouterParser extends AbstractRouterParser {
 
 	@Override
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected BeanDefinition doParseRouter(Element element, ParserContext parserContext) {
+	protected BeanDefinitionBuilder doParseRouter(Element element, ParserContext parserContext) {
 		BeanDefinitionBuilder recipientListRouterBuilder = BeanDefinitionBuilder.genericBeanDefinition(RecipientListRouter.class);
 		List<Element> childElements = DomUtils.getChildElementsByTagName(element, "recipient");
 		Assert.notEmpty(childElements,
 				"At least one recipient channel must be defined (e.g., <recipient channel=\"channel1\"/>).");
-		ManagedList recipientList = new ManagedList();
+		ManagedList<BeanDefinition> recipientList = new ManagedList<BeanDefinition>();
 		for (Element childElement : childElements) {
 			BeanDefinitionBuilder recipientBuilder = BeanDefinitionBuilder.genericBeanDefinition(Recipient.class);
 			recipientBuilder.addConstructorArgReference(childElement.getAttribute("channel"));
@@ -63,7 +62,7 @@ public class RecipientListRouterParser extends AbstractRouterParser {
 			recipientList.add(recipientBuilder.getBeanDefinition());
 		}
 		recipientListRouterBuilder.addPropertyValue("recipients", recipientList);
-		return recipientListRouterBuilder.getBeanDefinition();
+		return recipientListRouterBuilder;
 	}
 
 }

@@ -20,20 +20,61 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.beans.factory.BeanClassLoaderAware;
+import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 
 /**
  * A Message Router that resolves the {@link MessageChannel} based on the
  * {@link Message Message's} payload type.
- * 
+ *
  * @author Mark Fisher
  * @author Oleg Zhurakousky
  */
-public class PayloadTypeRouter extends AbstractMappingMessageRouter {
+public class PayloadTypeRouter extends AbstractMappingMessageRouter<Class<?>> implements BeanClassLoaderAware {
 
-	private static final String ARRAY_SUFFIX = "[]";
+	private volatile ClassLoader classLoader;
+
+	@Override
+	public void setBeanClassLoader(ClassLoader classLoader) {
+		this.classLoader = classLoader;
+	}
+
+	/**
+	 * Add a channel mapping from the provided key to channel name.
+	 *
+	 * @param key The key.
+	 * @param channelName The channel name.
+	 */
+	@Override
+	@ManagedOperation
+	public void setChannelMapping(String key, String channelName) {
+		try {
+			this.channelMappings.put(ClassUtils.forName(key, this.classLoader), channelName);
+		}
+		catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+
+	/**
+	 * Remove a channel mapping for the given key if present.
+	 *
+	 * @param key The key.
+	 */
+	@Override
+	@ManagedOperation
+	public void removeChannelMapping(String key) {
+		try {
+			this.channelMappings.remove(ClassUtils.forName(key, this.classLoader));
+		}
+		catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
 
 	/**
 	 * Selects the most appropriate channel name matching channel identifiers which are the
@@ -50,40 +91,19 @@ public class PayloadTypeRouter extends AbstractMappingMessageRouter {
 			return null;
 		}
 		Class<?> type = message.getPayload().getClass();
-		boolean isArray = type.isArray();
-		if (isArray) {
-			type = type.getComponentType();
-		}
-		String closestMatch =  this.findClosestMatch(type, isArray);
+		Class<?> closestMatch =  this.findClosestMatch(type);
 		return (closestMatch != null) ? Collections.<Object>singletonList(closestMatch) : null;
 	}
 
 
-	private String findClosestMatch(Class<?> type, boolean isArray) {
-		int minTypeDiffWeight = Integer.MAX_VALUE;
-		List<String> matches = new ArrayList<String>();
-		for (String candidate : this.getChannelMappings().keySet()) {
-			if (isArray) {
-				if (!candidate.endsWith(ARRAY_SUFFIX)) {
-					continue;
-				}
-				// trim the suffix
-				candidate = candidate.substring(0, candidate.length() - ARRAY_SUFFIX.length());
-			}
-			else if (candidate.endsWith(ARRAY_SUFFIX)) {
-				continue;
-			}
-			int typeDiffWeight = determineTypeDifferenceWeight(candidate, type, 0);
-			if (typeDiffWeight < minTypeDiffWeight) {
-				minTypeDiffWeight = typeDiffWeight;
-				// new winner, start accumulating matches from scratch
-				matches.clear();
-				matches.add((isArray) ? candidate + ARRAY_SUFFIX : candidate);
-			}
-			else if (typeDiffWeight == minTypeDiffWeight && typeDiffWeight != Integer.MAX_VALUE) {
-				// candidate tied with current winner, keep track
+	private Class<?> findClosestMatch(Class<?> type) {
+		List<Class<?>> matches = new ArrayList<Class<?>>();
+		for (Class<?> candidate : this.getChannelMappings().keySet()) {
+
+			if (candidate.isAssignableFrom(type)) {
 				matches.add(candidate);
 			}
+
 		}
 		if (matches.size() > 1) { // ambiguity
 			throw new IllegalStateException(
@@ -94,29 +114,6 @@ public class PayloadTypeRouter extends AbstractMappingMessageRouter {
 		}
 		// we have a winner
 		return matches.get(0);
-	}
-
-	private int determineTypeDifferenceWeight(String candidate, Class<?> type, int level) {
-		if (type.getName().equals(candidate)) {
-			return level;
-		}
-		for (Class<?> iface : type.getInterfaces()) {
-			if (iface.getName().equals(candidate)) {
-				return (level % 2 == 1) ? level + 2 : level + 1; 
-			}
-			// no match at this level, continue up the hierarchy
-			for (Class<?> superInterface : iface.getInterfaces()) {
-				int weight = this.determineTypeDifferenceWeight(candidate, superInterface, level + 3);
-				if (weight < Integer.MAX_VALUE) {
-					return weight;
-				}
-			}
-		}
-		if (type.getSuperclass() == null) {
-			// exhausted hierarchy and found no match
-			return Integer.MAX_VALUE;
-		}
-		return this.determineTypeDifferenceWeight(candidate, type.getSuperclass(), level + 2);
 	}
 
 }

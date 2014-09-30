@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
 
 package org.springframework.integration.store;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +40,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * @author Iwein Fuld
  * @author Dave Syer
  * @author Gary Russell
+ * @author Artem Bilan
  */
 public class SimpleMessageStoreTests {
 
@@ -60,11 +64,30 @@ public class SimpleMessageStoreTests {
 
 	@Test(expected = MessagingException.class)
 	public void shouldNotHoldMoreThanGroupCapacity() {
-		SimpleMessageStore store = new SimpleMessageStore(0, 1);
+		SimpleMessageStore store = new SimpleMessageStore(1, 1);
 		Message<String> testMessage1 = MessageBuilder.withPayload("foo").build();
 		Message<String> testMessage2 = MessageBuilder.withPayload("bar").build();
 		store.addMessageToGroup("foo", testMessage1);
 		store.addMessageToGroup("foo", testMessage2);
+	}
+
+	@Test
+	public void shouldExemptThePlaceForMessage() {
+		SimpleMessageStore store = new SimpleMessageStore(5, 1);
+
+		Message<String> m = MessageBuilder.withPayload("foo").build();
+		for (int i = 0; i < 10; i++) {
+			store.addMessageToGroup("bar", m);
+			store.removeMessageFromGroup("bar", m);
+		}
+		try {
+			store.addMessageToGroup("foo", m);
+			fail("MessagingException expected");
+		}
+		catch (Exception e) {
+			assertThat(e, instanceOf(MessagingException.class));
+			assertThat(e.getMessage(), containsString("was out of capacity at"));
+		}
 	}
 
 	@Test

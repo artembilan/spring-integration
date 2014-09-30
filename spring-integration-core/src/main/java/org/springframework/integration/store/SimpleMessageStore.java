@@ -39,7 +39,7 @@ import org.springframework.util.CollectionUtils;
  * @author Dave Syer
  * @author Oleg Zhurakousky
  * @author Gary Russell
- *
+ * @author Artem Bilan
  * @since 2.0
  */
 public class SimpleMessageStore extends AbstractMessageGroupStore
@@ -51,9 +51,13 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 
 	private final ConcurrentMap<Object, SimpleMessageGroup> groupIdToMessageGroup;
 
+	private final int individualCapacity;
+
 	private final UpperBound individualUpperBound;
 
 	private final UpperBound groupUpperBound;
+
+	private final ConcurrentMap<Object, UpperBound> individualGroupUpperBound;
 
 	private volatile boolean isUsed;
 
@@ -66,8 +70,8 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 	 * the capacity applies to the number of messages that can be stored, and once that limit is reached attempting to
 	 * store another will result in an exception.
 	 *
-	 * @param individualCapacity The message capacity.
-	 * @param groupCapacity The capacity of each group.
+	 * @param individualCapacity The message capacity and message group size.
+	 * @param groupCapacity The capacity of message groups.
 	 */
 	public SimpleMessageStore(int individualCapacity, int groupCapacity) {
 		this(individualCapacity, groupCapacity, new DefaultLockRegistry());
@@ -78,16 +82,18 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 	 * Also allows the provision of a custom {@link LockRegistry}
 	 * rather than using the default.
 	 *
-	 * @param individualCapacity The message capacity.
-	 * @param groupCapacity The capacity of each group.
+	 * @param individualCapacity The messages capacity and message group size.
+	 * @param groupCapacity The capacity of message groups.
 	 * @param lockRegistry The lock registry.
 	 */
 	public SimpleMessageStore(int individualCapacity, int groupCapacity, LockRegistry lockRegistry) {
 		Assert.notNull(lockRegistry, "The LockRegistry cannot be null");
 		this.idToMessage = new ConcurrentHashMap<UUID, Message<?>>();
 		this.groupIdToMessageGroup = new ConcurrentHashMap<Object, SimpleMessageGroup>();
+		this.individualCapacity = individualCapacity;
 		this.individualUpperBound = new UpperBound(individualCapacity);
 		this.groupUpperBound = new UpperBound(groupCapacity);
+		this.individualGroupUpperBound = new ConcurrentHashMap<Object, UpperBound>();
 		this.lockRegistry = lockRegistry;
 	}
 
@@ -196,18 +202,24 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 
 	@Override
 	public MessageGroup addMessageToGroup(Object groupId, Message<?> message) {
-		if (!groupUpperBound.tryAcquire(0)) {
-			throw new MessagingException(this.getClass().getSimpleName()
-					+ " was out of capacity at, try constructing it with a larger capacity.");
-		}
 		Lock lock = this.lockRegistry.obtain(groupId);
 		try {
 			lock.lockInterruptibly();
 			try {
 				SimpleMessageGroup group = this.groupIdToMessageGroup.get(groupId);
 				if (group == null) {
+					if (!this.groupUpperBound.tryAcquire(0)) {
+						throw new MessagingException(this.getClass().getSimpleName()
+								+ " was out of capacity at, try constructing it with a larger capacity.");
+					}
 					group = new SimpleMessageGroup(groupId);
 					this.groupIdToMessageGroup.putIfAbsent(groupId, group);
+					this.individualGroupUpperBound.putIfAbsent(groupId, new UpperBound(this.individualCapacity));
+				}
+				if (!this.individualGroupUpperBound.get(groupId).tryAcquire(0)) {
+					throw new MessagingException(this.getClass().getSimpleName()
+							+ " was out of capacity at for individual group, " +
+							"try constructing it with a larger capacity.");
 				}
 				group.add(message);
 				this.groupIdToMessageGroup.get(groupId).setLastModified(System.currentTimeMillis());
@@ -229,12 +241,13 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 		try {
 			lock.lockInterruptibly();
 			try {
-				if (!groupIdToMessageGroup.containsKey(groupId)) {
+				if (!this.groupIdToMessageGroup.containsKey(groupId)) {
 					return;
 				}
 
-				groupUpperBound.release(groupIdToMessageGroup.get(groupId).size());
-				groupIdToMessageGroup.remove(groupId);
+				this.groupUpperBound.release();
+				this.individualGroupUpperBound.remove(groupId);
+				this.groupIdToMessageGroup.remove(groupId);
 			}
 			finally {
 				lock.unlock();
@@ -257,6 +270,7 @@ public class SimpleMessageStore extends AbstractMessageGroupStore
 						"can not be located while attempting to remove Message from the MessageGroup");
 				group.remove(messageToRemove);
 				group.setLastModified(System.currentTimeMillis());
+				this.individualGroupUpperBound.get(groupId).release();
 				return group;
 			}
 			finally {

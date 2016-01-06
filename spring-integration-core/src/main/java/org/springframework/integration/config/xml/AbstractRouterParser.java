@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.springframework.util.xml.DomUtils;
  * Base parser for routers.
  *
  * @author Mark Fisher
+ * @author Gary Russell
  */
 public abstract class AbstractRouterParser extends AbstractConsumerEndpointParser {
 
@@ -44,8 +45,8 @@ public abstract class AbstractRouterParser extends AbstractConsumerEndpointParse
 				&& StringUtils.hasText(element.getAttribute("send-timeout"))) {
 			parserContext.getReaderContext().error("Only one of 'timeout' and 'send-timeout' is allowed", element);
 		}
-		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "timeout");
-		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "send-timeout", "timeout");
+		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "timeout", "sendTimeout");
+		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "send-timeout");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "resolution-required");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "apply-sequence");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "ignore-send-failures");

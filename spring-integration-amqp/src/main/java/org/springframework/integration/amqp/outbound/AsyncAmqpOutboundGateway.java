@@ -44,8 +44,6 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 
 	private final MessageConverter messageConverter;
 
-	private volatile boolean requiresReply; // overrides super
-
 	public AsyncAmqpOutboundGateway(AsyncRabbitTemplate template) {
 		Assert.notNull(template, "AsyncRabbitTemplate cannot be null");
 		this.template = template;
@@ -53,12 +51,6 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 		Assert.notNull(this.messageConverter, "the template's message converter cannot be null");
 		setConnectionFactory(this.template.getConnectionFactory());
 		setAsyncReplySupported(true);
-	}
-
-	@Override
-	public void setRequiresReply(boolean requiresReply) {
-		super.setRequiresReply(false);
-		this.requiresReply = requiresReply;
 	}
 
 	@Override
@@ -82,7 +74,7 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 
 		private final Message<?> requestMessage;
 
-		public FutureCallback(Message<?> requestMessage) {
+		FutureCallback(Message<?> requestMessage) {
 			this.requestMessage = requestMessage;
 		}
 
@@ -90,7 +82,7 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 		public void onSuccess(org.springframework.amqp.core.Message result) {
 			Message<?> replyMessage = null;
 			try {
-				replyMessage = buildReplyMessage(messageConverter, result);
+				replyMessage = buildReplyMessage(AsyncAmqpOutboundGateway.this.messageConverter, result);
 				sendOutputs(replyMessage, this.requestMessage);
 			}
 			catch (Exception e) {
@@ -110,7 +102,7 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 		public void onFailure(Throwable ex) {
 			Throwable exceptionToSend = ex;
 			if (ex instanceof AmqpReplyTimeoutException) {
-				if (AsyncAmqpOutboundGateway.this.requiresReply) {
+				if (isRequiresReply()) {
 					exceptionToSend = new ReplyRequiredException(this.requestMessage, "Timeout on async request/reply",
 							ex);
 				}
@@ -130,7 +122,7 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 					AmqpMessageReturnedException amre = (AmqpMessageReturnedException) ex;
 					Message<?> returnedMessage = buildReturnedMessage(
 							amre.getReturnedMessage(), amre.getReplyCode(), amre.getReplyText(), amre.getExchange(),
-							amre.getRoutingKey(), messageConverter);
+							amre.getRoutingKey(), AsyncAmqpOutboundGateway.this.messageConverter);
 					sendOutput(returnedMessage, getReturnChannel(), true);
 				}
 			}
@@ -170,7 +162,7 @@ public class AsyncAmqpOutboundGateway extends AbstractAmqpOutboundEndpoint {
 
 		private final RabbitMessageFuture replyFuture;
 
-		public CorrelationCallback(CorrelationData correlationData, RabbitMessageFuture replyFuture) {
+		CorrelationCallback(CorrelationData correlationData, RabbitMessageFuture replyFuture) {
 			this.correlationData = correlationData;
 			this.replyFuture = replyFuture;
 		}

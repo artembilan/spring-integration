@@ -215,6 +215,7 @@ public class AsyncAmqpGatewayTests {
 
 		asyncTemplate.stop();
 		receiver.stop();
+		ccf.destroy();
 	}
 
 }

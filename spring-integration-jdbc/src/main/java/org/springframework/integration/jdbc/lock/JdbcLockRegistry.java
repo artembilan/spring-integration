@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.integration.support.locks.DefaultLockRegistry;
 import org.springframework.integration.support.locks.ExpirableLockRegistry;
 import org.springframework.integration.support.locks.LockRegistry;
@@ -41,7 +40,8 @@ import org.springframework.util.Assert;
  * transactions.
  *
  * @author Dave Syer
- *
+ * @author Artem Bilan
+ * @since 4.3
  */
 public class JdbcLockRegistry implements ExpirableLockRegistry {
 
@@ -111,59 +111,58 @@ public class JdbcLockRegistry implements ExpirableLockRegistry {
 		@Override
 		public void lock() {
 			this.delegate.lock();
-			boolean locked = false;
 			try {
-				// this is a bit ugly, but...
-				while (!locked) {
+				while (true) {
 					try {
-						locked = doLock();
+						while (!doLock()) {
+							Thread.sleep(100);
+						}
+						break;
 					}
 					catch (TransactionTimedOutException e) {
 						// try again
 					}
-					catch (DuplicateKeyException e) {
-						// try again
-					}
-					catch (RuntimeException e) {
-						this.delegate.unlock();
-						throw e;
+					catch (InterruptedException e) {
+						/*
+						 * This method must be uninterruptible so catch and ignore
+						 * interrupts and only break out of the while loop when
+						 * we get the lock.
+						 */
 					}
 				}
 			}
 			catch (Exception e) {
 				this.delegate.unlock();
-				throw new RuntimeException("Failed to acquire mutex at " + this.path, e);
+				throw new RuntimeException("Failed to lock mutex at " + this.path, e);
 			}
 		}
 
 		@Override
 		public void lockInterruptibly() throws InterruptedException {
-			boolean locked = false;
-			if (this.delegate.isHeldByCurrentThread()) {
-				locked = true;
-			}
 			this.delegate.lockInterruptibly();
-			if (locked) {
-				return;
+			try {
+				while (true) {
+					try {
+						while (!this.doLock()) {
+							Thread.sleep(100);
+							if (Thread.currentThread().isInterrupted()) {
+								throw new InterruptedException();
+							}
+						}
+						break;
+					}
+					catch (TransactionTimedOutException e) {
+						// try again
+					}
+				}
 			}
-			// this is a bit ugly, but...
-			while (!locked) {
-				try {
-					locked = doLock();
-				}
-				catch (TransactionTimedOutException e) {
-					throw new InterruptedException("Transaction timed out");
-				}
-				catch (DuplicateKeyException e) {
-					throw new InterruptedException("Duplicate key");
-				}
-				catch (RuntimeException e) {
-					this.delegate.unlock();
-					throw e;
-				}
-				if (Thread.currentThread().isInterrupted()) {
-					throw new InterruptedException();
-				}
+			catch (InterruptedException ie) {
+				this.delegate.unlock();
+				throw ie;
+			}
+			catch (Exception e) {
+				this.delegate.unlock();
+				throw new RuntimeException("Failed to lock mutex at " + this.path, e);
 			}
 		}
 
@@ -180,29 +179,40 @@ public class JdbcLockRegistry implements ExpirableLockRegistry {
 
 		@Override
 		public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+			long now = System.currentTimeMillis();
 			if (!this.delegate.tryLock(time, unit)) {
 				return false;
 			}
 			try {
-				return doLock();
+				long expire = now + TimeUnit.MILLISECONDS.convert(time, unit);
+				boolean acquired;
+				while (true) {
+					try {
+						while (!(acquired = doLock()) && System.currentTimeMillis() < expire) {
+							Thread.sleep(100);
+						}
+						if (!acquired) {
+							this.delegate.unlock();
+						}
+						return acquired;
+					}
+					catch (TransactionTimedOutException e) {
+						// try again
+					}
+				}
 			}
-			catch (RuntimeException e) {
+			catch (Exception e) {
 				this.delegate.unlock();
-				throw e;
+				throw new RuntimeException("Failed to lock mutex at " + this.path, e);
 			}
 		}
 
 		private boolean doLock() {
-			try {
-				boolean acquired = this.mutex.acquire(this.path);
-				if (acquired) {
-					this.lastUsed = System.currentTimeMillis();
-				}
-				return acquired;
+			boolean acquired = this.mutex.acquire(this.path);
+			if (acquired) {
+				this.lastUsed = System.currentTimeMillis();
 			}
-			catch (Exception e) {
-				throw new RuntimeException("Failed to acquire mutex at " + this.path, e);
-			}
+			return acquired;
 		}
 
 		@Override

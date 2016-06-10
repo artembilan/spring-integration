@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@ package org.springframework.integration.jdbc.lock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -38,16 +41,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.util.StopWatch;
 
 /**
  * @author Dave Syer
- *
+ * @author Artem Bilan
+ * @since 4.3
  */
 @ContextConfiguration("JdbcLockRegistryTests-context.xml")
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -208,7 +214,8 @@ public class JdbcLockRegistryDifferentClientTests {
 			ExecutorService pool = Executors.newFixedThreadPool(6);
 			ArrayList<Callable<Boolean>> tasks = new ArrayList<Callable<Boolean>>();
 			for (int j = 0; j < 20; j++) {
-				final LockRepository client = new DefaultLockRepository(this.dataSource);
+				final DefaultLockRepository client = new DefaultLockRepository(this.dataSource);
+				client.afterPropertiesSet();
 				this.context.getAutowireCapableBeanFactory().autowireBean(client);
 				Callable<Boolean> task = new Callable<Boolean>() {
 
@@ -248,4 +255,54 @@ public class JdbcLockRegistryDifferentClientTests {
 		}
 
 	}
+
+	@Test
+	public void testExclusiveAccess() throws Exception {
+		DefaultLockRepository client1 = new DefaultLockRepository(dataSource);
+		client1.afterPropertiesSet();
+		final DefaultLockRepository client2 = new DefaultLockRepository(dataSource);
+		client2.afterPropertiesSet();
+		Lock lock1 = new JdbcLockRegistry(client1).obtain("foo");
+		final BlockingQueue<Integer> data = new LinkedBlockingQueue<Integer>();
+		final CountDownLatch latch1 = new CountDownLatch(1);
+		lock1.lockInterruptibly();
+		Executors.newSingleThreadExecutor().execute(new Runnable() {
+
+			@Override
+			public void run() {
+				Lock lock2 = new JdbcLockRegistry(client2).obtain("foo");
+				try {
+					latch1.countDown();
+					StopWatch stopWatch = new StopWatch();
+					stopWatch.start();
+					lock2.lockInterruptibly();
+					stopWatch.stop();
+					data.add(4);
+					Thread.sleep(10);
+					data.add(5);
+					Thread.sleep(10);
+					data.add(6);
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+				finally {
+					lock2.unlock();
+				}
+			}
+		});
+		assertTrue(latch1.await(10, TimeUnit.SECONDS));
+		data.add(1);
+		Thread.sleep(1000);
+		data.add(2);
+		Thread.sleep(1000);
+		data.add(3);
+		lock1.unlock();
+		for (int i = 0; i < 6; i++) {
+			Integer integer = data.poll(10, TimeUnit.SECONDS);
+			assertNotNull(integer);
+			assertEquals(i + 1, integer.intValue());
+		}
+	}
+
 }

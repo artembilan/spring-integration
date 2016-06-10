@@ -84,7 +84,6 @@ public class DefaultLockRepository implements LockRepository, InitializingBean {
 	 * A unique grouping identifier for all locks persisted with this store. Using
 	 * multiple regions allows the store to be partitioned (if necessary) for different
 	 * purposes. Defaults to <code>DEFAULT</code>.
-	 *
 	 * @param region the region name to set
 	 */
 	public void setRegion(String region) {
@@ -93,10 +92,19 @@ public class DefaultLockRepository implements LockRepository, InitializingBean {
 	}
 
 	/**
-	 * @param prefix the prefix to set (default INT_)
+	 * Specify the prefix for target data base table used from queries.
+	 * @param prefix the prefix to set (default INT_).
 	 */
 	public void setPrefix(String prefix) {
 		this.prefix = prefix;
+	}
+
+	/**
+	 * Specify the time (in milliseconds) to expire dead locks.
+	 * @param timeToLive the time to expire dead locks.
+	 */
+	public void setTimeToLive(int timeToLive) {
+		this.ttl = timeToLive;
 	}
 
 	@Override

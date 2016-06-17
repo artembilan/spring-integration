@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.concurrent.locks.Lock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -38,6 +39,7 @@ import org.springframework.integration.leader.event.LeaderEventPublisher;
 import org.springframework.integration.leader.event.OnGrantedEvent;
 import org.springframework.integration.leader.event.OnRevokedEvent;
 import org.springframework.integration.support.locks.LockRegistry;
+import org.springframework.util.Assert;
 
 /**
  * Component that initiates leader election based on holding a lock. If the lock has the
@@ -52,19 +54,50 @@ import org.springframework.integration.support.locks.LockRegistry;
  * be useful.
  *
  * @author Dave Syer
- *
+ * @since 4.3.1
  */
-public class LockRegistryLeaderInitiator
-		implements SmartLifecycle, DisposableBean, ApplicationEventPublisherAware {
+public class LockRegistryLeaderInitiator implements SmartLifecycle, DisposableBean, ApplicationEventPublisherAware {
 
-	private static final long DEFAULT_HEART_BEAT_TIME = 500L;
+	public static final long DEFAULT_HEART_BEAT_TIME = 500L;
 
-	private static final long DEFAULT_BUSY_WAIT_TIME = 50L;
+	public static final long DEFAULT_BUSY_WAIT_TIME = 50L;
 
-	private static final Log logger = LogFactory
-			.getLog(LockRegistryLeaderInitiator.class);
+	private static final Log logger = LogFactory.getLog(LockRegistryLeaderInitiator.class);
+
+	private static int threadNameCount = 0;
 
 	private static final Context NULL_CONTEXT = new NullContext();
+
+	private final Object lifecycleMonitor = new Object();
+
+	/**
+	 * Executor service for running leadership daemon.
+	 */
+	private final ExecutorService executorService = Executors.newSingleThreadExecutor(new ThreadFactory() {
+
+		@Override
+		public Thread newThread(Runnable r) {
+			Thread thread = new Thread(r, "lock-leadership-" + (threadNameCount++));
+			thread.setDaemon(true);
+			return thread;
+		}
+
+	});
+
+	/**
+	 * A lock registry. The locks it manages should be global (whatever that means for the
+	 * system) and expiring, in case the holder dies without notifying anyone.
+	 */
+	private final LockRegistry locks;
+
+	/**
+	 * Candidate for leader election. User injects this to receive callbacks on leadership
+	 * events. Alternatively applications can listen for the {@link OnGrantedEvent} and
+	 * {@link OnRevokedEvent}, as long as the
+	 * {@link #setLeaderEventPublisher(LeaderEventPublisher) leaderEventPublisher} is set.
+	 */
+	private final Candidate candidate;
+
 
 	/**
 	 * Time in milliseconds to wait in between attempts to re-acquire the lock, once it is
@@ -86,21 +119,20 @@ public class LockRegistryLeaderInitiator
 	 */
 	private long busyWaitMillis = DEFAULT_BUSY_WAIT_TIME;
 
-	/**
-	 * A lock registry. The locks it manages should be global (whatever that means for the
-	 * system) and expiring, in case the holder dies without notifying anyone.
-	 */
-	private final LockRegistry locks;
+	private LeaderSelector leaderSelector;
+
+	private ApplicationEventPublisher applicationEventPublisher;
 
 	/**
-	 * Candidate for leader election. User injects this to receive callbacks on leadership
-	 * events. Alternatively applications can listen for the {@link OnGrantedEvent} and
-	 * {@link OnRevokedEvent}, as long as the
-	 * {@link #setLeaderEventPublisher(LeaderEventPublisher) leaderEventPublisher} is set.
+	 * Leader event publisher if set.
 	 */
-	private final Candidate candidate;
+	private LeaderEventPublisher leaderEventPublisher;
 
-	private final Object lifecycleMonitor = new Object();
+	/**
+	 * Future returned by submitting an {@link LeaderSelector} to
+	 * {@link #executorService}. This is used to cancel leadership.
+	 */
+	private volatile Future<?> future;
 
 	/**
 	 * @see SmartLifecycle
@@ -108,7 +140,7 @@ public class LockRegistryLeaderInitiator
 	private volatile boolean autoStartup = true;
 
 	/**
-	 * @See SmartLifecycle which is an extension of org.springframework.context.Phased
+	 * @see SmartLifecycle which is an extension of org.springframework.context.Phased
 	 */
 	private volatile int phase;
 
@@ -118,14 +150,14 @@ public class LockRegistryLeaderInitiator
 	 */
 	private volatile boolean running;
 
-	private static int count = 0;
-
-	/** Leader event publisher if set */
-	private volatile LeaderEventPublisher leaderEventPublisher;
-
-	private LeaderSelector leaderSelector;
-
-	private ApplicationEventPublisher applicationEventPublisher;
+	/**
+	 * Create a new leader initiator with the provided lock registry and a default
+	 * candidate (which just logs the leadership events).
+	 * @param locks lock registry
+	 */
+	public LockRegistryLeaderInitiator(LockRegistry locks) {
+		this(locks, new DefaultCandidate());
+	}
 
 	/**
 	 * Create a new leader initiator. The candidate implementation is provided by the user
@@ -135,45 +167,16 @@ public class LockRegistryLeaderInitiator
 	 * @param candidate leadership election candidate
 	 */
 	public LockRegistryLeaderInitiator(LockRegistry locks, Candidate candidate) {
+		Assert.notNull(locks, "'locks' must not be null");
+		Assert.notNull(candidate, "'candidate' must not be null");
 		this.locks = locks;
 		this.candidate = candidate;
 	}
 
-	/**
-	 * Create a new leader initiator with the provided lock registry and a default
-	 * candidate (which just logs the leadership events).
-	 *
-	 * @param locks lock registry
-	 */
-	public LockRegistryLeaderInitiator(LockRegistry locks) {
-		this(locks, new DefaultCandidate());
-	}
-
 	@Override
-	public void setApplicationEventPublisher(
-			ApplicationEventPublisher applicationEventPublisher) {
+	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
 		this.applicationEventPublisher = applicationEventPublisher;
 	}
-
-	/**
-	 * Executor service for running leadership daemon.
-	 */
-	private final ExecutorService executorService = Executors
-			.newSingleThreadExecutor(new ThreadFactory() {
-
-				@Override
-				public Thread newThread(Runnable r) {
-					Thread thread = new Thread(r, "lock-leadership-" + (count++));
-					thread.setDaemon(true);
-					return thread;
-				}
-			});
-
-	/**
-	 * Future returned by submitting an {@link LeaderSelector} to
-	 * {@link #executorService}. This is used to cancel leadership.
-	 */
-	private volatile Future<?> future;
 
 	public void setHeartBeatMillis(long heartBeatMillis) {
 		this.heartBeatMillis = heartBeatMillis;
@@ -184,7 +187,15 @@ public class LockRegistryLeaderInitiator
 	}
 
 	/**
-	 * @return true if leadership election for this {@link #candidate} is running
+	 * Sets the {@link LeaderEventPublisher}.
+	 * @param leaderEventPublisher the event publisher
+	 */
+	public void setLeaderEventPublisher(LeaderEventPublisher leaderEventPublisher) {
+		this.leaderEventPublisher = leaderEventPublisher;
+	}
+
+	/**
+	 * @return true if leadership election for this {@link #candidate} is running.
 	 */
 	@Override
 	public boolean isRunning() {
@@ -218,13 +229,22 @@ public class LockRegistryLeaderInitiator
 	}
 
 	/**
+	 * @return the context (or null if not running)
+	 */
+	public Context getContext() {
+		if (this.leaderSelector == null) {
+			return NULL_CONTEXT;
+		}
+		return this.leaderSelector.context;
+	}
+
+	/**
 	 * Start the registration of the {@link #candidate} for leader election.
 	 */
 	@Override
 	public void start() {
 		if (this.leaderEventPublisher == null && this.applicationEventPublisher != null) {
-			this.leaderEventPublisher = new DefaultLeaderEventPublisher(
-					this.applicationEventPublisher);
+			this.leaderEventPublisher = new DefaultLeaderEventPublisher(this.applicationEventPublisher);
 		}
 		synchronized (this.lifecycleMonitor) {
 			if (!this.running) {
@@ -234,6 +254,18 @@ public class LockRegistryLeaderInitiator
 				logger.debug("Started LeaderInitiator");
 			}
 		}
+	}
+
+	@Override
+	public void destroy() throws Exception {
+		stop();
+		this.executorService.shutdown();
+	}
+
+	@Override
+	public void stop(Runnable runnable) {
+		stop();
+		runnable.run();
 	}
 
 	/**
@@ -251,27 +283,6 @@ public class LockRegistryLeaderInitiator
 		}
 	}
 
-	@Override
-	public void stop(Runnable runnable) {
-		stop();
-		runnable.run();
-	}
-
-	@Override
-	public void destroy() throws Exception {
-		stop();
-		this.executorService.shutdown();
-	}
-
-	/**
-	 * Sets the {@link LeaderEventPublisher}.
-	 *
-	 * @param leaderEventPublisher the event publisher
-	 */
-	public void setLeaderEventPublisher(LeaderEventPublisher leaderEventPublisher) {
-		this.leaderEventPublisher = leaderEventPublisher;
-	}
-
 	/**
 	 * @return the lock key used by leader election
 	 */
@@ -279,24 +290,19 @@ public class LockRegistryLeaderInitiator
 		return this.candidate.getRole();
 	}
 
-	/**
-	 * @return the context (or null if not running)
-	 */
-	public Context getContext() {
-		if (this.leaderSelector == null) {
-			return NULL_CONTEXT;
-		}
-		return this.leaderSelector.context;
-	}
-
-	class LeaderSelector implements Callable<Void> {
+	protected class LeaderSelector implements Callable<Void> {
 
 		private final Lock lock;
+
+		private final String lockKey;
+
 		private final LockContext context = new LockContext();
+
 		private volatile boolean locked = false;
 
 		LeaderSelector(String lockKey) {
 			this.lock = LockRegistryLeaderInitiator.this.locks.obtain(lockKey);
+			this.lockKey = lockKey;
 		}
 
 		@Override
@@ -314,8 +320,7 @@ public class LockRegistryLeaderInitiator
 								LockRegistryLeaderInitiator.this.candidate.onGranted(this.context);
 								if (LockRegistryLeaderInitiator.this.leaderEventPublisher != null) {
 									LockRegistryLeaderInitiator.this.leaderEventPublisher.publishOnGranted(
-											LockRegistryLeaderInitiator.this, this.context,
-											LockRegistryLeaderInitiator.this.candidate.getRole());
+											LockRegistryLeaderInitiator.this, this.context, this.lockKey);
 								}
 							}
 						}
@@ -333,6 +338,8 @@ public class LockRegistryLeaderInitiator
 					}
 					catch (Exception e) {
 						if (this.locked) {
+							this.lock.unlock();
+							this.locked = false;
 							// The lock was broken and we are no longer leader
 							LockRegistryLeaderInitiator.this.candidate.onRevoked(this.context);
 							if (LockRegistryLeaderInitiator.this.leaderEventPublisher != null) {
@@ -340,18 +347,14 @@ public class LockRegistryLeaderInitiator
 										LockRegistryLeaderInitiator.this, this.context,
 										LockRegistryLeaderInitiator.this.candidate.getRole());
 							}
-							this.locked = false;
+							// Give it a chance to elect some other leader.
+							Thread.sleep(LockRegistryLeaderInitiator.this.busyWaitMillis);
 						}
 					}
 				}
 			}
 			finally {
-				try {
-					// Clean up the lock
-					this.lock.unlock();
-				}
-				catch (Exception e) {
-				}
+				this.lock.unlock();
 			}
 			return null;
 		}
@@ -365,7 +368,7 @@ public class LockRegistryLeaderInitiator
 	/**
 	 * Implementation of leadership context backed by lock registry.
 	 */
-	class LockContext implements Context {
+	private class LockContext implements Context {
 
 		@Override
 		public boolean isLeader() {
@@ -381,13 +384,14 @@ public class LockRegistryLeaderInitiator
 
 		@Override
 		public String toString() {
-			return String.format("LockContext{role=%s, id=%s, isLeader=%s}",
-					LockRegistryLeaderInitiator.this.candidate.getRole(), LockRegistryLeaderInitiator.this.candidate.getId(), isLeader());
+			return "LockContext{role=" + LockRegistryLeaderInitiator.this.candidate.getRole() +
+					", id=" + LockRegistryLeaderInitiator.this.candidate.getId() +
+					", isLeader=" + isLeader() + "}";
 		}
 
 	}
 
-	private static class NullContext implements Context {
+	private static final class NullContext implements Context {
 
 		@Override
 		public boolean isLeader() {
@@ -399,4 +403,5 @@ public class LockRegistryLeaderInitiator
 		}
 
 	}
+
 }

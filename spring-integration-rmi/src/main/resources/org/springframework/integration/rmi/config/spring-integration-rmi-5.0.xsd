@@ -123,7 +123,7 @@
 							</xsd:documentation>
 							<xsd:appinfo>
 								<tool:annotation kind="ref">
-									<tool:expected-type type="org.springframework.integration.rmi.RmiProxyFactoryBeanConfigurer"/>
+									<tool:expected-type type="org.springframework.integration.rmi.RmiOutboundGateway$RmiProxyFactoryBeanConfigurer"/>
 								</tool:annotation>
 							</xsd:appinfo>
 						</xsd:annotation>

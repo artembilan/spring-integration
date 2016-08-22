@@ -98,7 +98,7 @@ public RmiOutboundGateway outbound() {
 }
 ----
 
-Starting with _version 4.3_, the outbound gateway has a second constructor that takes a `RmiProxyFactoryBeanConfigurer` bean as a second argument.
+Starting with _version 4.3_, the outbound gateway has a second constructor that takes a RmiProxyFactoryBeanConfigurer instance alongside with the service url argument.
 This allows further configuration before the proxy is created; for example, to inject a Spring Security `ContextPropagatingRemoteInvocationFactory`:
 
 [source, java]

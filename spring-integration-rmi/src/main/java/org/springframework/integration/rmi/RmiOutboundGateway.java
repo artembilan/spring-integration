@@ -54,6 +54,7 @@ public class RmiOutboundGateway extends AbstractReplyProducingMessageHandler {
 	 * configurer.
 	 * @param url the url.
 	 * @param configurer the {@link RmiProxyFactoryBeanConfigurer}.
+	 * @since 4.3.2
 	 */
 	public RmiOutboundGateway(String url, RmiProxyFactoryBeanConfigurer configurer) {
 		this.configurer = configurer;
@@ -82,7 +83,10 @@ public class RmiOutboundGateway extends AbstractReplyProducingMessageHandler {
 		try {
 			Message<?> reply = this.proxy.exchange(requestMessage);
 			if (reply != null) {
-				reply = this.getMessageBuilderFactory().fromMessage(reply).copyHeadersIfAbsent(message.getHeaders()).build();
+				reply = getMessageBuilderFactory()
+						.fromMessage(reply)
+						.copyHeadersIfAbsent(message.getHeaders())
+						.build();
 			}
 			return reply;
 		}
@@ -90,7 +94,8 @@ public class RmiOutboundGateway extends AbstractReplyProducingMessageHandler {
 			throw new MessageHandlingException(message, e);
 		}
 		catch (RemoteAccessException e) {
-			throw new MessageHandlingException(message, "Remote failure in RmiOutboundGateway: " + this.getComponentName(), e);
+			throw new MessageHandlingException(message, "Remote failure in RmiOutboundGateway: " +
+					this.getComponentName(), e);
 		}
 	}
 
@@ -108,11 +113,8 @@ public class RmiOutboundGateway extends AbstractReplyProducingMessageHandler {
 	}
 
 	/**
-	 * Allows configuration of the proxy factory bean before the RMI proxy is
-	 * created.
-	 *
+	 * Allows configuration of the proxy factory bean before the RMI proxy is created.
 	 * @since 4.3.2
-	 *
 	 */
 	public interface RmiProxyFactoryBeanConfigurer {
 

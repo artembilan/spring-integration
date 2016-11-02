@@ -177,7 +177,7 @@ public class AbstractCorrelatingMessageHandlerTests {
 		final MessageGroupStore groupStore = new SimpleMessageStore();
 		AggregatingMessageHandler handler = new AggregatingMessageHandler(group -> group, groupStore);
 
-		final List<Message<?>> outputMessages = new ArrayList<Message<?>>();
+		final List<Message<?>> outputMessages = new ArrayList<>();
 		handler.setOutputChannel((message, timeout) -> {
 			/*
 			 * Executes when group 'bar' completes normally
@@ -192,13 +192,15 @@ public class AbstractCorrelatingMessageHandlerTests {
 				.build();
 		handler.handleMessage(message);
 
-		handler.setMinimumTimeoutForEmptyGroups(1000);
+		handler.setMinimumTimeoutForEmptyGroups(10000);
 
 		assertEquals(1, outputMessages.size());
 
 		assertEquals(1, TestUtils.getPropertyValue(handler, "messageStore.groupIdToMessageGroup", Map.class).size());
 		groupStore.expireMessageGroups(0);
 		assertEquals(1, TestUtils.getPropertyValue(handler, "messageStore.groupIdToMessageGroup", Map.class).size());
+
+		handler.setMinimumTimeoutForEmptyGroups(10);
 
 		int n = 0;
 

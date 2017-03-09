@@ -23,6 +23,7 @@ import org.springframework.transaction.support.ResourceHolderSynchronization;
  *
  * @author Artem Bilan
  * @author Andreas Baer
+ *
  * @since 4.0
  */
 public class IntegrationResourceHolderSynchronization
@@ -42,6 +43,13 @@ public class IntegrationResourceHolderSynchronization
 		return this.resourceHolder;
 	}
 
+	/**
+	 * Specify if the {@link #resourceHolder} should be unbind from the Thread Local store
+	 * at transaction completion or not. Defaults {@code true}.
+	 * @param shouldUnbindAtCompletion unbind or not {@link #resourceHolder}
+	 * at transaction completion
+	 * @since 5.0
+	 */
 	public void setShouldUnbindAtCompletion(boolean shouldUnbindAtCompletion) {
 		this.shouldUnbindAtCompletion = shouldUnbindAtCompletion;
 	}
@@ -50,4 +58,5 @@ public class IntegrationResourceHolderSynchronization
 	protected boolean shouldUnbindAtCompletion() {
 		return this.shouldUnbindAtCompletion;
 	}
+
 }

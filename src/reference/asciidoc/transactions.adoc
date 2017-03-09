@@ -165,12 +165,11 @@ For example, the `MongoDbMessageSource` provides the _#mongoTemplate_ variable w
 
 To enable the feature for a particular poller, you provide a reference to the `TransactionSynchronizationFactory` on the poller's <transactional/> element using the _synchronization-factory_ attribute.
 
-Spring Integration 5.0 introduces `PassthroughTransactionSynchronizationFactory` which is applied by default to pollers
- when no `TransactionSynchronizationFactory` is configured but a TX advice of type `TransactionInterceptor` exists.
- Using `PassthroughTransactionSynchronizationFactory` pollers can bind messages to a transactional
-context and provide the failedMessage in the `MessagingException` if an exception is thrown in the TX advice.
-When using a a custom TX advice `PassthroughTransactionSynchronizationFactory` must be configured explicitly to
-achieve this behavior.
+Starting with _version 5.0_, a new `PassThroughTransactionSynchronizationFactory` is present which is applied by default to polling endpoints when no `TransactionSynchronizationFactory` is configured but a TX advice of type `TransactionInterceptor` exists.
+Using `PassThroughTransactionSynchronizationFactory` polling endpoints bind a polled message to the current transactional context and provide it as a `failedMessage` in the `MessagingException` if an exception is thrown after TX advice.
+When using a a custom TX advice `PassThroughTransactionSynchronizationFactory` can be configured explicitly to achieve this behavior.
+That `MessagingException` is wrapped to the `ErrorMessage` and sent to the `errorChannel`.
+Previously such an `ErrorMessage` was without a `failedMessage` information making it difficult to determine the transaction commit problem.
 
 To simplify configuration of these components, namespace support for the default factory has been provided.
 Configuration is best described using an example:

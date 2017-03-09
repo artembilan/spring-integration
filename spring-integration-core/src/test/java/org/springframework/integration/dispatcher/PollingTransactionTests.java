@@ -211,7 +211,7 @@ public class PollingTransactionTests {
 	}
 
 	@Test
-	public void commitFalilureAndHandlerFailureTest() throws Throwable {
+	public void commitFailureAndHandlerFailureTest() throws Throwable {
 		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(
 				"transactionFailureTests.xml", this.getClass());
 		TestTransactionManager txManager = (TestTransactionManager) context.getBean("txManagerBad");
@@ -220,7 +220,7 @@ public class PollingTransactionTests {
 		PollableChannel output = (PollableChannel) context.getBean("output");
 		PollableChannel errorChannel = (PollableChannel) context.getBean("errorChannel");
 		assertEquals(0, txManager.getCommitCount());
-		inputTxFail.send(new GenericMessage<String>("commitFalilureTest"));
+		inputTxFail.send(new GenericMessage<>("commitFalilureTest"));
 		Message<?> errorMessage = errorChannel.receive(10000);
 		assertNotNull(errorMessage);
 		Object payload = errorMessage.getPayload();
@@ -231,7 +231,7 @@ public class PollingTransactionTests {
 		assertNotNull(output.receive(0));
 		assertEquals(0, txManager.getCommitCount());
 
-		inputHandlerFail.send(new GenericMessage<String>("handlerFalilureTest"));
+		inputHandlerFail.send(new GenericMessage<>("handlerFalilureTest"));
 		errorMessage = errorChannel.receive(10000);
 		assertNotNull(errorMessage);
 		payload = errorMessage.getPayload();
@@ -246,18 +246,22 @@ public class PollingTransactionTests {
 	}
 
 	public static class SampleAdvice implements MethodInterceptor {
+
 		@Override
 		public Object invoke(MethodInvocation invocation) throws Throwable {
 			return invocation.proceed();
 		}
+
 	}
 
 	@SuppressWarnings("serial")
 	public static class FailingCommitTransactionManager extends TestTransactionManager {
+
 		@Override
 		protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
 			throw new IllegalTransactionStateException("intentional test commit failure");
 		}
+
 	}
 
 }

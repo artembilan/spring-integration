@@ -21,21 +21,25 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.Assert;
 
 /**
- * A simple implementation of {@link TransactionSynchronizationFactory} which creates a
- * {@link IntegrationResourceHolder} under provided {@code key} and registers the
- * resource in the {@link TransactionSynchronizationManager}.
+ * A simple {@link TransactionSynchronizationFactory} implementation which produces
+ * an {@link IntegrationResourceHolderSynchronization} and registers
+ * an {@link IntegrationResourceHolder} under provided {@code key} with
+ * the current transaction scope.
  *
  * @author Andreas Baer
+ *
  * @since 5.0
+ *
+ * @see TransactionSynchronizationManager#bindResource(Object, Object)
  */
-public class PassthroughTransactionSynchronizationFactory implements TransactionSynchronizationFactory {
+public class PassThroughTransactionSynchronizationFactory implements TransactionSynchronizationFactory {
 
 
 	@Override
 	public TransactionSynchronization create(Object key) {
 		Assert.notNull(key, "'key' must not be null");
-		IntegrationResourceHolderSynchronization synchronization = new IntegrationResourceHolderSynchronization(new
-				IntegrationResourceHolder(), key);
+		IntegrationResourceHolderSynchronization synchronization =
+				new IntegrationResourceHolderSynchronization(new IntegrationResourceHolder(), key);
 		TransactionSynchronizationManager.bindResource(key, synchronization.getResourceHolder());
 		return synchronization;
 	}

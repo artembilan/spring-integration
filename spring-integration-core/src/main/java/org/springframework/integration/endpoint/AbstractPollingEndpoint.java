@@ -33,7 +33,7 @@ import org.springframework.integration.support.channel.BeanFactoryChannelResolve
 import org.springframework.integration.transaction.ExpressionEvaluatingTransactionSynchronizationProcessor;
 import org.springframework.integration.transaction.IntegrationResourceHolder;
 import org.springframework.integration.transaction.IntegrationResourceHolderSynchronization;
-import org.springframework.integration.transaction.PassthroughTransactionSynchronizationFactory;
+import org.springframework.integration.transaction.PassThroughTransactionSynchronizationFactory;
 import org.springframework.integration.transaction.TransactionSynchronizationFactory;
 import org.springframework.integration.util.ErrorHandlingTaskExecutor;
 import org.springframework.messaging.Message;
@@ -172,7 +172,7 @@ public abstract class AbstractPollingEndpoint extends AbstractEndpoint implement
 			}
 			if (this.transactionSynchronizationFactory == null && this.adviceChain != null) {
 				if (this.adviceChain.stream().anyMatch(TransactionInterceptor.class::isInstance)) {
-					this.transactionSynchronizationFactory = new PassthroughTransactionSynchronizationFactory();
+					this.transactionSynchronizationFactory = new PassThroughTransactionSynchronizationFactory();
 				}
 			}
 			this.initialized = true;

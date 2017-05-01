@@ -132,20 +132,20 @@ public class Channels {
 	}
 
 
-	public FluxMessageChannelSpec reactive() {
-		return MessageChannels.reactive();
+	public FluxMessageChannelSpec flux() {
+		return MessageChannels.flux();
 	}
 
-	public FluxMessageChannelSpec reactive(String id) {
-		return MessageChannels.reactive(id);
+	public FluxMessageChannelSpec flux(String id) {
+		return MessageChannels.flux(id);
 	}
 
-	public FluxMessageChannelSpec reactive(FluxProcessor<Message<?>, Message<?>> processor) {
-		return MessageChannels.reactive(processor);
+	public FluxMessageChannelSpec flux(FluxProcessor<Message<?>, Message<?>> processor) {
+		return MessageChannels.flux(processor);
 	}
 
-	public FluxMessageChannelSpec reactive(String id, FluxProcessor<Message<?>, Message<?>> processor) {
-		return MessageChannels.reactive(id, processor);
+	public FluxMessageChannelSpec flux(String id, FluxProcessor<Message<?>, Message<?>> processor) {
+		return MessageChannels.flux(id, processor);
 	}
 
 	Channels() {

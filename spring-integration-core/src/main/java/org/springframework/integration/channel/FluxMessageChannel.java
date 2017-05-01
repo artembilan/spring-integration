@@ -32,6 +32,9 @@ import reactor.core.publisher.FluxProcessor;
 import reactor.core.publisher.FluxSink;
 
 /**
+ * The {@link AbstractMessageChannel} implementation for the
+ * Reactive Streams {@link Publisher} based on the Project Reactor {@link FluxProcessor}.
+ *
  * @author Artem Bilan
  * @author Gary Russell
  *
@@ -46,8 +49,6 @@ public class FluxMessageChannel extends AbstractMessageChannel
 
 	private final FluxProcessor<Message<?>, Message<?>> processor;
 
-	private final Flux<Message<?>> flux;
-
 	private final FluxSink<Message<?>> sink;
 
 	private volatile boolean upstreamSubscribed;
@@ -59,7 +60,6 @@ public class FluxMessageChannel extends AbstractMessageChannel
 	public FluxMessageChannel(FluxProcessor<Message<?>, Message<?>> processor) {
 		Assert.notNull(processor, "'processor' must not be null");
 		this.processor = processor;
-		this.flux = Flux.from(processor);
 		this.sink = processor.sink();
 	}
 
@@ -73,7 +73,7 @@ public class FluxMessageChannel extends AbstractMessageChannel
 	public void subscribe(Subscriber<? super Message<?>> subscriber) {
 		this.subscribers.add(subscriber);
 
-		this.flux.doOnCancel(() -> FluxMessageChannel.this.subscribers.remove(subscriber))
+		this.processor.doOnCancel(() -> FluxMessageChannel.this.subscribers.remove(subscriber))
 				.subscribe(subscriber);
 
 		if (!this.upstreamSubscribed) {

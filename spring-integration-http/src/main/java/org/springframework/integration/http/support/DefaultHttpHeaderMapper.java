@@ -73,110 +73,109 @@ import org.springframework.util.StringUtils;
  */
 public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanFactoryAware, InitializingBean {
 
-	private static final Log logger = LogFactory.getLog(DefaultHttpHeaderMapper.class);
+	protected final Log logger = LogFactory.getLog(getClass());
 
+	public static final String ACCEPT = "Accept";
 
-	private static final String ACCEPT = "Accept";
+	public static final String ACCEPT_CHARSET = "Accept-Charset";
 
-	private static final String ACCEPT_CHARSET = "Accept-Charset";
+	public static final String ACCEPT_ENCODING = "Accept-Encoding";
 
-	private static final String ACCEPT_ENCODING = "Accept-Encoding";
+	public static final String ACCEPT_LANGUAGE = "Accept-Language";
 
-	private static final String ACCEPT_LANGUAGE = "Accept-Language";
+	public static final String ACCEPT_RANGES = "Accept-Ranges";
 
-	private static final String ACCEPT_RANGES = "Accept-Ranges";
+	public static final String AGE = "Age";
 
-	private static final String AGE = "Age";
+	public static final String ALLOW = "Allow";
 
-	private static final String ALLOW = "Allow";
+	public static final String AUTHORIZATION = "Authorization";
 
-	private static final String AUTHORIZATION = "Authorization";
+	public static final String CACHE_CONTROL = "Cache-Control";
 
-	private static final String CACHE_CONTROL = "Cache-Control";
+	public static final String CONNECTION = "Connection";
 
-	private static final String CONNECTION = "Connection";
+	public static final String CONTENT_ENCODING = "Content-Encoding";
 
-	private static final String CONTENT_ENCODING = "Content-Encoding";
+	public static final String CONTENT_LANGUAGE = "Content-Language";
 
-	private static final String CONTENT_LANGUAGE = "Content-Language";
+	public static final String CONTENT_LENGTH = "Content-Length";
 
-	private static final String CONTENT_LENGTH = "Content-Length";
+	public static final String CONTENT_LOCATION = "Content-Location";
 
-	private static final String CONTENT_LOCATION = "Content-Location";
+	public static final String CONTENT_MD5 = "Content-MD5";
 
-	private static final String CONTENT_MD5 = "Content-MD5";
+	public static final String CONTENT_RANGE = "Content-Range";
 
-	private static final String CONTENT_RANGE = "Content-Range";
+	public static final String CONTENT_TYPE = "Content-Type";
 
-	private static final String CONTENT_TYPE = "Content-Type";
-
-	private static final String CONTENT_DISPOSITION = "Content-Disposition";
+	public static final String CONTENT_DISPOSITION = "Content-Disposition";
 
 	public static final String COOKIE = "Cookie";
 
-	private static final String DATE = "Date";
+	public static final String DATE = "Date";
 
-	private static final String ETAG = "ETag";
+	public static final String ETAG = "ETag";
 
-	private static final String EXPECT = "Expect";
+	public static final String EXPECT = "Expect";
 
-	private static final String EXPIRES = "Expires";
+	public static final String EXPIRES = "Expires";
 
-	private static final String FROM = "From";
+	public static final String FROM = "From";
 
-	private static final String HOST = "Host";
+	public static final String HOST = "Host";
 
-	private static final String IF_MATCH = "If-Match";
+	public static final String IF_MATCH = "If-Match";
 
-	private static final String IF_MODIFIED_SINCE = "If-Modified-Since";
+	public static final String IF_MODIFIED_SINCE = "If-Modified-Since";
 
-	private static final String IF_NONE_MATCH = "If-None-Match";
+	public static final String IF_NONE_MATCH = "If-None-Match";
 
-	private static final String IF_RANGE = "If-Range";
+	public static final String IF_RANGE = "If-Range";
 
-	private static final String IF_UNMODIFIED_SINCE = "If-Unmodified-Since";
+	public static final String IF_UNMODIFIED_SINCE = "If-Unmodified-Since";
 
-	private static final String LAST_MODIFIED = "Last-Modified";
+	public static final String LAST_MODIFIED = "Last-Modified";
 
-	private static final String LOCATION = "Location";
+	public static final String LOCATION = "Location";
 
-	private static final String MAX_FORWARDS = "Max-Forwards";
+	public static final String MAX_FORWARDS = "Max-Forwards";
 
-	private static final String PRAGMA = "Pragma";
+	public static final String PRAGMA = "Pragma";
 
-	private static final String PROXY_AUTHENTICATE = "Proxy-Authenticate";
+	public static final String PROXY_AUTHENTICATE = "Proxy-Authenticate";
 
-	private static final String PROXY_AUTHORIZATION = "Proxy-Authorization";
+	public static final String PROXY_AUTHORIZATION = "Proxy-Authorization";
 
-	private static final String RANGE = "Range";
+	public static final String RANGE = "Range";
 
-	private static final String REFERER = "Referer";
+	public static final String REFERER = "Referer";
 
-	private static final String REFRESH = "Refresh";
+	public static final String REFRESH = "Refresh";
 
-	private static final String RETRY_AFTER = "Retry-After";
+	public static final String RETRY_AFTER = "Retry-After";
 
-	private static final String SERVER = "Server";
+	public static final String SERVER = "Server";
 
 	public static final String SET_COOKIE = "Set-Cookie";
 
-	private static final String TE = "TE";
+	public static final String TE = "TE";
 
-	private static final String TRAILER = "Trailer";
+	public static final String TRAILER = "Trailer";
 
-	private static final String UPGRADE = "Upgrade";
+	public static final String UPGRADE = "Upgrade";
 
-	private static final String USER_AGENT = "User-Agent";
+	public static final String USER_AGENT = "User-Agent";
 
-	private static final String VARY = "Vary";
+	public static final String VARY = "Vary";
 
-	private static final String VIA = "Via";
+	public static final String VIA = "Via";
 
-	private static final String WARNING = "Warning";
+	public static final String WARNING = "Warning";
 
-	private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+	public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
 
-	private static final String TRANSFER_ENCODING = "Transfer-Encoding";
+	public static final String TRANSFER_ENCODING = "Transfer-Encoding";
 
 	private static final String[] HTTP_REQUEST_HEADER_NAMES = new String[] {
 			ACCEPT,
@@ -259,7 +258,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 	public static final String HTTP_RESPONSE_HEADER_NAME_PATTERN = "HTTP_RESPONSE_HEADERS";
 
 	// Copy of 'org.springframework.http.HttpHeaders#DATE_FORMATS'
-	private static final DateTimeFormatter[] DATE_FORMATS = new DateTimeFormatter[] {
+	protected static final DateTimeFormatter[] DATE_FORMATS = new DateTimeFormatter[] {
 			DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US).withZone(ZoneId.of("GMT")),
 			DateTimeFormatter.ofPattern("EEE, dd-MMM-yy HH:mm:ss zzz", Locale.US).withZone(ZoneId.of("GMT")),
 			DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss yyyy", Locale.US).withZone(ZoneId.of("GMT"))
@@ -299,6 +298,10 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
+	}
+
+	protected BeanFactory getBeanFactory() {
+		return this.beanFactory;
 	}
 
 	/**
@@ -482,7 +485,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 		}
 	}
 
-	private boolean containsElementIgnoreCase(String[] headerNames, String name) {
+	protected final boolean containsElementIgnoreCase(String[] headerNames, String name) {
 		for (String headerName : headerNames) {
 			if (headerName.equalsIgnoreCase(name)) {
 				return true;
@@ -522,7 +525,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 		return this.shouldMapHeader(headerName, outboundHeaderNamesLower);
 	}
 
-	private boolean shouldMapInboundHeader(String headerName) {
+	protected final boolean shouldMapInboundHeader(String headerName) {
 		return this.shouldMapHeader(headerName, this.inboundHeaderNamesLower);
 	}
 
@@ -957,7 +960,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 		}
 	}
 
-	private Object getHttpHeader(HttpHeaders source, String name) {
+	protected Object getHttpHeader(HttpHeaders source, String name) {
 		if (ACCEPT.equalsIgnoreCase(name)) {
 			return source.getAccept();
 		}
@@ -1052,7 +1055,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 		}
 	}
 
-	private String convertToString(Object value) {
+	protected String convertToString(Object value) {
 		if (this.conversionService != null &&
 				this.conversionService.canConvert(TypeDescriptor.forObject(value),
 						TypeDescriptor.valueOf(String.class))) {
@@ -1063,7 +1066,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 
 	// Utility methods
 
-	private long getFirstDate(String headerValue, String headerName) {
+	protected long getFirstDate(String headerValue, String headerName) {
 		for (DateTimeFormatter dateFormat : DATE_FORMATS) {
 			try {
 				return dateFormat.parse(headerValue, ZonedDateTime::from)
@@ -1078,7 +1081,7 @@ public class DefaultHttpHeaderMapper implements HeaderMapper<HttpHeaders>, BeanF
 				+ "' header");
 	}
 
-	private String formatDate(long date) {
+	protected String formatDate(long date) {
 		return DATE_FORMATS[0].format(Instant.ofEpochMilli(date));
 	}
 

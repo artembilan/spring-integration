@@ -26,8 +26,8 @@ import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.junit.Test;
+
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.integration.test.util.TestUtils;
 
 /**
  * @author Oleg Zhurakousky
@@ -53,35 +53,41 @@ public class XmppConnectionFactoryBeanTests {
 
 	@Test
 	public void testXmppConnectionFactoryBeanNoRoster() throws Exception {
-		XmppConnectionFactoryBean xmppConnectionFactoryBean = new XmppConnectionFactoryBean() {
-			@Override
-			protected XMPPConnection createInstance() throws Exception {
-				return mock(XMPPTCPConnection.class);
-			}
-		};
+		XmppConnectionFactoryBean xmppConnectionFactoryBean =
+				new XmppConnectionFactoryBean() {
+
+					@Override
+					protected XMPPConnection createInstance() throws Exception {
+						return mock(XMPPTCPConnection.class);
+					}
+
+				};
+
 		xmppConnectionFactoryBean.setSubscriptionMode(null);
-		XMPPConnection connection = xmppConnectionFactoryBean.createInstance();
-		assertNotNull(connection);
-		TestUtils.setPropertyValue(xmppConnectionFactoryBean, "connection", connection);
-		assertTrue(Roster.getInstanceFor(connection).isRosterLoadedAtLogin());
+		xmppConnectionFactoryBean.afterPropertiesSet();
 		xmppConnectionFactoryBean.start();
+		XMPPConnection connection = xmppConnectionFactoryBean.getObject();
+
 		assertFalse(Roster.getInstanceFor(connection).isRosterLoadedAtLogin());
 	}
 
 	@Test
 	public void testXmppConnectionFactoryBeanWithRoster() throws Exception {
-		XmppConnectionFactoryBean xmppConnectionFactoryBean = new XmppConnectionFactoryBean() {
-			@Override
-			protected XMPPConnection createInstance() throws Exception {
-				return mock(XMPPTCPConnection.class);
-			}
-		};
+		XmppConnectionFactoryBean xmppConnectionFactoryBean =
+				new XmppConnectionFactoryBean() {
+
+					@Override
+					protected XMPPConnection createInstance() throws Exception {
+						return mock(XMPPTCPConnection.class);
+					}
+
+				};
+
 		xmppConnectionFactoryBean.setSubscriptionMode(Roster.SubscriptionMode.accept_all);
-		XMPPConnection connection = xmppConnectionFactoryBean.createInstance();
-		assertNotNull(connection);
-		TestUtils.setPropertyValue(xmppConnectionFactoryBean, "connection", connection);
-		assertTrue(Roster.getInstanceFor(connection).isRosterLoadedAtLogin());
+		xmppConnectionFactoryBean.afterPropertiesSet();
 		xmppConnectionFactoryBean.start();
+		XMPPConnection connection = xmppConnectionFactoryBean.getObject();
+
 		assertTrue(Roster.getInstanceFor(connection).isRosterLoadedAtLogin());
 	}
 

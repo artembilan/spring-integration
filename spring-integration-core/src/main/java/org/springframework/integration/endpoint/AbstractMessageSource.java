@@ -131,11 +131,6 @@ public abstract class AbstractMessageSource<T> extends AbstractExpressionEvaluat
 	}
 
 	@Override
-	@Deprecated
-	public void setCounter(Counter counter) {
-	}
-
-	@Override
 	public void reset() {
 		this.messageCount.set(0);
 	}

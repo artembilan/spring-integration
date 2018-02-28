@@ -130,12 +130,13 @@ public abstract class AbstractPollableChannel extends AbstractMessageChannel
 			if (countsEnabled && !counted) {
 				if (getMeterRegistry() != null) {
 					Counter.builder(RECEIVE_COUNTER_NAME)
-						.tag("name", getComponentName() == null ? "unknown" : getComponentName())
-						.tag("type", "channel")
-						.tag("result", "failure")
-						.tag("exception", e.getClass().getSimpleName())
-						.description("Messages received")
-						.register(getMeterRegistry()).increment();
+							.tag("name", getComponentName() == null ? "unknown" : getComponentName())
+							.tag("type", "channel")
+							.tag("result", "failure")
+							.tag("exception", e.getClass().getSimpleName())
+							.description("Messages received")
+							.register(getMeterRegistry())
+							.increment();
 				}
 				getMetrics().afterError();
 			}
@@ -149,12 +150,12 @@ public abstract class AbstractPollableChannel extends AbstractMessageChannel
 	private void incrementReceiveCounter() {
 		if (this.receiveCounter == null) {
 			this.receiveCounter = Counter.builder(RECEIVE_COUNTER_NAME)
-				.tag("name", getComponentName())
-				.tag("type", "channel")
-				.tag("result", "success")
-				.tag("exception", "none")
-				.description("Messages received")
-				.register(getMeterRegistry());
+					.tag("name", getComponentName())
+					.tag("type", "channel")
+					.tag("result", "success")
+					.tag("exception", "none")
+					.description("Messages received")
+					.register(getMeterRegistry());
 		}
 		this.receiveCounter.increment();
 	}

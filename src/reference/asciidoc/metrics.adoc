@@ -123,7 +123,7 @@ The `Timer` Meters for send operations on message channels have the following na
 
 (A `failure` result with a `none` exception means the channel `send()` operation returned `false`).
 
-The `Timer` Meters for receive operations on pollable message channels have the following names/tags:
+The `Counter` Meters for receive operations on pollable message channels have the following names/tags:
 
 - `name` : `spring.integration.receive`
 - `tag` : `type:channel`

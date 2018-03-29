@@ -29,6 +29,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
+import com.rabbitmq.client.ConfirmCallback;
+
 /**
  * An advice that causes all downstream {@link RabbitOperations} operations to be executed
  * on the same channel, as long as there are no thread handoffs, since the channel is
@@ -38,6 +40,8 @@ import org.springframework.util.ReflectionUtils;
  * so configured.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 5.1
  *
  */
@@ -48,6 +52,10 @@ public class BoundRabbitChannelAdvice implements HandleMessageAdvice {
 	private final RabbitOperations operations;
 
 	private final Duration waitForConfirmsTimeout;
+
+	private final ConfirmCallback ackCallback = this::handleAcks;
+
+	private final ConfirmCallback nackCallback = this::handleNacks;
 
 	/**
 	 * Construct an instance that doesn't wait for confirms.
@@ -84,18 +92,25 @@ public class BoundRabbitChannelAdvice implements HandleMessageAdvice {
 					ReflectionUtils.rethrowRuntimeException(t);
 					return null; // not reachable - satisfy compiler
 				}
-			}, (tag, multiple) -> {
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Publisher confirm ack: " + tag + ", multiple: " + multiple);
-				}
-			}, (tag, multiple) -> {
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Publisher confirm nack: " + tag + ", multiple: " + multiple);
-				}
-			});
+			}, this.ackCallback, this.nackCallback);
 		}
 		catch (UndeclaredThrowableException ute) {
 			throw ute.getCause();
+		}
+	}
+
+	private void handleAcks(long deliveryTag, boolean multiple) {
+		doHandleAcks(deliveryTag, multiple, true);
+	}
+
+	private void handleNacks(long deliveryTag, boolean multiple) {
+		doHandleAcks(deliveryTag, multiple, false);
+	}
+
+	private void doHandleAcks(long deliveryTag, boolean multiple, boolean ack) {
+		if (this.logger.isDebugEnabled()) {
+			this.logger.debug("Publisher confirm " + (!ack ? "n" : "") + "ack: " + deliveryTag + ", " +
+					"multiple: " + multiple);
 		}
 	}
 

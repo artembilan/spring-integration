@@ -56,8 +56,6 @@ import com.rabbitmq.client.ConnectionFactory;
 @SpringJUnitConfig
 public class BoundRabbitChannelAdviceTests {
 
-	public static final String QUEUE = "dedicated.advice";
-
 	@Autowired
 	private Config.Gate gate;
 

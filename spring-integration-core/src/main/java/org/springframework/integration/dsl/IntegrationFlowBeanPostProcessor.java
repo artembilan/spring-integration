@@ -113,6 +113,7 @@ public class IntegrationFlowBeanPostProcessor
 
 	private Object processStandardIntegrationFlow(StandardIntegrationFlow flow, String flowBeanName) {
 		String flowNamePrefix = flowBeanName + ".";
+		boolean useFlowIdAsPrefix = this.flowContext.isUseIdAsPrefix(flowBeanName);
 		int subFlowNameIndex = 0;
 		int channelNameIndex = 0;
 
@@ -128,9 +129,9 @@ public class IntegrationFlowBeanPostProcessor
 				String id = endpointSpec.getId();
 
 				if (id == null) {
-					id = generateBeanName(endpoint, flowNamePrefix, entry.getValue());
+					id = generateBeanName(endpoint, flowNamePrefix, entry.getValue(), useFlowIdAsPrefix);
 				}
-				else if (this.flowContext.isUseIdAsPrefix(flowBeanName)) {
+				else if (useFlowIdAsPrefix) {
 					id = flowNamePrefix + id;
 				}
 
@@ -193,13 +194,19 @@ public class IntegrationFlowBeanPostProcessor
 													.contains(o.getKey()))
 									.forEach(o ->
 											registerComponent(o.getKey(),
-													generateBeanName(o.getKey(), flowNamePrefix, o.getValue())));
+													generateBeanName(o.getKey(), flowNamePrefix, o.getValue(),
+															useFlowIdAsPrefix)));
 						}
 						SourcePollingChannelAdapterFactoryBean pollingChannelAdapterFactoryBean = spec.get().getT1();
 						String id = spec.getId();
-						if (!StringUtils.hasText(id)) {
-							id = generateBeanName(pollingChannelAdapterFactoryBean, flowNamePrefix, entry.getValue());
+						if (id == null) {
+							id = generateBeanName(pollingChannelAdapterFactoryBean, flowNamePrefix, entry.getValue(),
+									useFlowIdAsPrefix);
 						}
+						else if (useFlowIdAsPrefix) {
+							id = flowNamePrefix + id;
+						}
+
 						registerComponent(pollingChannelAdapterFactoryBean, id, flowBeanName);
 						targetIntegrationComponents.put(pollingChannelAdapterFactoryBean, id);
 
@@ -244,7 +251,7 @@ public class IntegrationFlowBeanPostProcessor
 						targetIntegrationComponents.put(component, gatewayId);
 					}
 					else {
-						String generatedBeanName = generateBeanName(component, flowNamePrefix, entry.getValue());
+						String generatedBeanName = generateBeanName(component, flowNamePrefix, entry.getValue(), false);
 						registerComponent(component, generatedBeanName, flowBeanName);
 						targetIntegrationComponents.put(component, generatedBeanName);
 					}
@@ -342,15 +349,19 @@ public class IntegrationFlowBeanPostProcessor
 	}
 
 	private String generateBeanName(Object instance, String prefix) {
-		return generateBeanName(instance, prefix, null);
+		return generateBeanName(instance, prefix, null, false);
 	}
 
-	private String generateBeanName(Object instance, String prefix, String fallbackId) {
+	private String generateBeanName(Object instance, String prefix, String fallbackId, boolean useFlowIdAsPrefix) {
 		if (instance instanceof NamedComponent && ((NamedComponent) instance).getComponentName() != null) {
-			return ((NamedComponent) instance).getComponentName();
+			return useFlowIdAsPrefix
+					? prefix + ((NamedComponent) instance).getComponentName()
+					: ((NamedComponent) instance).getComponentName();
 		}
 		else if (fallbackId != null) {
-			return fallbackId;
+			return useFlowIdAsPrefix
+					? prefix + fallbackId
+					: fallbackId;
 		}
 
 		String generatedBeanName = prefix + instance.getClass().getName();

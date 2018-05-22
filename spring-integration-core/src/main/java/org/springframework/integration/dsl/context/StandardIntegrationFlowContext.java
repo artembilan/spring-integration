@@ -83,8 +83,7 @@ public final class StandardIntegrationFlowContext implements IntegrationFlowCont
 
 	@Override
 	public boolean isUseIdAsPrefix(String flowId) {
-		Boolean use = this.useFlowIdAsPrefix.get(flowId);
-		return use == null ? false : use;
+		return Boolean.TRUE.equals(this.useFlowIdAsPrefix.get(flowId));
 	}
 
 	private void register(StandardIntegrationFlowRegistrationBuilder builder) {

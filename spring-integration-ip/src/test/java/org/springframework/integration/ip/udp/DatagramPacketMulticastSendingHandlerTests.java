@@ -38,6 +38,7 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.integration.ip.IpHeaders;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
+import org.springframework.util.SocketUtils;
 
 /**
  * @author Mark Fisher
@@ -119,7 +120,7 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		final int testPort = socket.getLocalPort();
 		final AtomicInteger ackPort = new AtomicInteger();
 
-		final String multicastAddress = "225.6.7.8";
+		final String multicastAddress = this.multicastRule.getGroup();
 		final String payload = "foobar";
 		final CountDownLatch listening = new CountDownLatch(2);
 		final CountDownLatch ackListening = new CountDownLatch(1);
@@ -167,7 +168,8 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		executor.execute(catcher);
 		assertThat(listening.await(10000, TimeUnit.MILLISECONDS)).isTrue();
 		MulticastSendingMessageHandler handler =
-				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost", 0, 10000);
+				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost",
+						SocketUtils.findAvailableUdpPort(), 10000);
 		handler.setLocalAddress(this.multicastRule.getNic().getInetAddresses().nextElement().getHostName());
 		handler.setMinAcksForSuccess(2);
 		handler.setBeanFactory(mock(BeanFactory.class));

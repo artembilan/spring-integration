@@ -139,6 +139,7 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		final CountDownLatch listening = new CountDownLatch(2);
 		final CountDownLatch ackListening = new CountDownLatch(1);
 		final CountDownLatch ackSent = new CountDownLatch(2);
+		NetworkInterface nic = this.multicastRule.getNic();
 		Runnable catcher = () -> {
 			try {
 				byte[] buffer = new byte[1000];
@@ -164,8 +165,21 @@ public class DatagramPacketMulticastSendingHandlerTests {
 				Message<byte[]> message = mapper.toMessage(receivedPacket);
 				Object id = message.getHeaders().get(IpHeaders.ACK_ID);
 				byte[] ack = id.toString().getBytes();
+				InetAddress inetAddress = null;
+				Enumeration<InetAddress> addressesFromNetworkInterface = nic.getInetAddresses();
+				while (addressesFromNetworkInterface.hasMoreElements()) {
+					InetAddress address = addressesFromNetworkInterface.nextElement();
+					if (address.isSiteLocalAddress()
+							&& !address.isAnyLocalAddress()
+							&& !address.isLinkLocalAddress()
+							&& !address.isLoopbackAddress()) {
+
+						inetAddress = address;
+						break;
+					}
+				}
 				DatagramPacket ackPack = new DatagramPacket(ack, ack.length,
-						new InetSocketAddress(multicastRule.getNic().getInetAddresses().nextElement(), ackPort.get()));
+						new InetSocketAddress(inetAddress, ackPort.get()));
 				DatagramSocket out = new DatagramSocket();
 				out.send(ackPack);
 				out.close();
@@ -183,7 +197,7 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		assertThat(listening.await(10000, TimeUnit.MILLISECONDS)).isTrue();
 		MulticastSendingMessageHandler handler =
 				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost", 0, 10000);
-		NetworkInterface nic = this.multicastRule.getNic();
+
 		if (nic != null) {
 			String hostName = null;
 			Enumeration<InetAddress> addressesFromNetworkInterface = nic.getInetAddresses();

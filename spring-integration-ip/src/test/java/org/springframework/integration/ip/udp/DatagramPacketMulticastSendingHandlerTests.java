@@ -39,7 +39,6 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.integration.ip.IpHeaders;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
-import org.springframework.util.SocketUtils;
 
 /**
  * @author Mark Fisher
@@ -183,8 +182,7 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		executor.execute(catcher);
 		assertThat(listening.await(10000, TimeUnit.MILLISECONDS)).isTrue();
 		MulticastSendingMessageHandler handler =
-				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost",
-						SocketUtils.findAvailableUdpPort(), 10000);
+				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost", 0, 10000);
 		NetworkInterface nic = this.multicastRule.getNic();
 		if (nic != null) {
 			String hostName = null;

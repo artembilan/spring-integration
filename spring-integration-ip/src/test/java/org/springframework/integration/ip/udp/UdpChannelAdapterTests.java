@@ -23,8 +23,10 @@ import static org.mockito.Mockito.mock;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -262,8 +264,24 @@ public class UdpChannelAdapterTests {
 		DatagramPacketMessageMapper mapper = new DatagramPacketMessageMapper();
 		DatagramPacket packet = mapper.fromMessage(message);
 		packet.setSocketAddress(new InetSocketAddress(this.multicastRule.getGroup(), port));
+		InetAddress inetAddress = null;
+		if (nic != null) {
+			Enumeration<InetAddress> addressesFromNetworkInterface = nic.getInetAddresses();
+			while (addressesFromNetworkInterface.hasMoreElements()) {
+				InetAddress address = addressesFromNetworkInterface.nextElement();
+				if (address.isSiteLocalAddress()
+						&& !address.isAnyLocalAddress()
+						&& !address.isLinkLocalAddress()
+						&& !address.isLoopbackAddress()) {
+
+					inetAddress = address;
+					break;
+				}
+			}
+
+		}
 		DatagramSocket datagramSocket =
-				new DatagramSocket(SocketUtils.findAvailableUdpPort(), nic.getInetAddresses().nextElement());
+				new DatagramSocket(SocketUtils.findAvailableUdpPort(), inetAddress);
 		datagramSocket.send(packet);
 		datagramSocket.close();
 

@@ -25,6 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -98,7 +99,21 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		handler.setBeanFactory(mock(BeanFactory.class));
 		NetworkInterface nic = this.multicastRule.getNic();
 		if (nic != null) {
-			handler.setLocalAddress(nic.getInetAddresses().nextElement().getHostName());
+			String hostName = null;
+			Enumeration<InetAddress> addressesFromNetworkInterface = nic.getInetAddresses();
+			while (addressesFromNetworkInterface.hasMoreElements()) {
+				InetAddress inetAddress = addressesFromNetworkInterface.nextElement();
+				if (inetAddress.isSiteLocalAddress()
+						&& !inetAddress.isAnyLocalAddress()
+						&& !inetAddress.isLinkLocalAddress()
+						&& !inetAddress.isLoopbackAddress()) {
+
+					hostName = inetAddress.getHostName();
+					break;
+				}
+			}
+
+			handler.setLocalAddress(hostName);
 		}
 		handler.afterPropertiesSet();
 		handler.handleMessage(MessageBuilder.withPayload(payload).build());
@@ -170,7 +185,24 @@ public class DatagramPacketMulticastSendingHandlerTests {
 		MulticastSendingMessageHandler handler =
 				new MulticastSendingMessageHandler(multicastAddress, testPort, true, true, "localhost",
 						SocketUtils.findAvailableUdpPort(), 10000);
-		handler.setLocalAddress(this.multicastRule.getNic().getInetAddresses().nextElement().getHostName());
+		NetworkInterface nic = this.multicastRule.getNic();
+		if (nic != null) {
+			String hostName = null;
+			Enumeration<InetAddress> addressesFromNetworkInterface = nic.getInetAddresses();
+			while (addressesFromNetworkInterface.hasMoreElements()) {
+				InetAddress inetAddress = addressesFromNetworkInterface.nextElement();
+				if (inetAddress.isSiteLocalAddress()
+						&& !inetAddress.isAnyLocalAddress()
+						&& !inetAddress.isLinkLocalAddress()
+						&& !inetAddress.isLoopbackAddress()) {
+
+					hostName = inetAddress.getHostName();
+					break;
+				}
+			}
+
+			handler.setLocalAddress(hostName);
+		}
 		handler.setMinAcksForSuccess(2);
 		handler.setBeanFactory(mock(BeanFactory.class));
 		handler.afterPropertiesSet();

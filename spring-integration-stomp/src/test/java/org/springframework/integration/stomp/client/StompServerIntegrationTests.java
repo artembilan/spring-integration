@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import org.apache.activemq.broker.BrokerService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.ApplicationEvent;
@@ -46,6 +45,7 @@ import org.springframework.integration.stomp.event.StompSessionConnectedEvent;
 import org.springframework.integration.stomp.inbound.StompInboundChannelAdapter;
 import org.springframework.integration.stomp.outbound.StompMessageHandler;
 import org.springframework.integration.support.converter.PassThruMessageConverter;
+import org.springframework.integration.test.condition.LogLevels;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageDeliveryException;
@@ -63,7 +63,7 @@ import org.springframework.util.SocketUtils;
  *
  * @since 4.2
  */
-@Disabled("Until the fix in reactor-netty-core")
+@LogLevels(level = "trace", categories = { "reactor.netty.tcp", "io.netty" })
 public class StompServerIntegrationTests {
 
 	private static BrokerService activeMQBroker;

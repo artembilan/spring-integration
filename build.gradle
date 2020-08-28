@@ -289,18 +289,16 @@ configure(javaProjects) { subproject ->
 	compileKotlin.dependsOn updateCopyrights
 
 	jacocoTestReport {
+		dependsOn test
 		reports {
 			xml.enabled true
 			csv.enabled false
-			html.destination file("${buildDir}/reports/jacoco/html")
+			html.destination file("$buildDir/reports/jacoco/html")
 		}
 	}
 
 	test {
 		maxHeapSize = '1536m'
-		jacoco {
-			destinationFile = file("$buildDir/jacoco.exec")
-		}
 	}
 
 	task testAll(type: Test, dependsOn: [':checkAsciidocLinks', 'check'])

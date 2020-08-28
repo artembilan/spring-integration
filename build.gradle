@@ -290,7 +290,7 @@ configure(javaProjects) { subproject ->
 
 	jacocoTestReport {
 		reports {
-			xml.enabled false
+			xml.enabled true
 			csv.enabled false
 			html.destination file("${buildDir}/reports/jacoco/html")
 		}
@@ -908,6 +908,10 @@ project('spring-integration-bom') {
 				from components.javaPlatform
 			}
 		}
+	}
+
+	sonarqube {
+		skipProject = true
 	}
 }
 

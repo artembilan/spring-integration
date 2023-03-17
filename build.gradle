@@ -322,9 +322,10 @@ configure(javaProjects) { subproject ->
 
     jacocoTestReport {
         reports {
+            xml.required = true
             csv.required = false
             html.required = false
-            xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+//            xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
         }
     }
 

@@ -326,13 +326,7 @@ configure(javaProjects) { subproject ->
         reports {
             csv.required = false
             html.required = false
-            xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
-        }
-    }
-
-    sonar {
-        properties {
-            property 'sonar.coverage.jacoco.xmlReportPaths', jacocoTestReport.reports.xml.outputLocation
+            xml.outputLocation = file("$buildDir/reports/jacoco/test/jacocoTestReport.xml")
         }
     }
 

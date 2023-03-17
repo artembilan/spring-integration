@@ -330,6 +330,12 @@ configure(javaProjects) { subproject ->
         }
     }
 
+    sonar {
+        properties {
+            property 'sonar.coverage.jacoco.xmlReportPaths', jacocoTestReport.reports.xml.outputLocation
+        }
+    }
+
     rootProject.tasks['sonarqube'].dependsOn jacocoTestReport
 
     test {

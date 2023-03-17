@@ -321,11 +321,12 @@ configure(javaProjects) { subproject ->
     compileKotlin.dependsOn updateCopyrights
 
     jacocoTestReport {
+        dependsOn test
         reports {
             xml.required = true
             csv.required = false
             html.required = false
-//            xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+            xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
         }
     }
 

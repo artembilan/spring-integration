@@ -324,9 +324,8 @@ configure(javaProjects) { subproject ->
         onlyIf { System.properties['sonar.host.url'] }
         dependsOn test
         reports {
-            csv.required = false
+            xml.required = true
             html.required = false
-            xml.outputLocation = file("$buildDir/reports/jacoco/test/jacocoTestReport.xml")
         }
     }
 
